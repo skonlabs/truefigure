@@ -1,0 +1,46 @@
+TrueFigure schema — verification run log
+PostgreSQL: PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+
+############################################################
+# PHASE 6 — clean apply on a fresh database (tail)
+############################################################
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMIT
+
+Checksums on applied DB:
+  enum_types = 35
+  tables     = 31
+  columns    = 377
+  seed user  = id 1 / user_ref 'system'
+
+############################################################
+# PHASE 7 — verification battery (every row PASS)
+############################################################
+            ?column?            |                                  case                                   
+--------------------------------+-------------------------------------------------------------------------
+ A_enum_column_match_rule       | PASS
+ B_all_enum_values_lowercase    | PASS
+ C_table_descriptions_31        | PASS
+ D_audit_columns_every_table    | PASS
+ E_updated_dt_trigger_31        | PASS
+ F_constraint_naming_convention | PASS
+ G_fk_orphan_id_columns         | PASS (figures.method_id: documented deliberate TEXT registry reference)
+(7 rows)
+
+
+############################################################
+# PHASE 8 — attack tests (all three MUST error)
+############################################################
+=== SETUP DONE ===
+--- Attack 1: cross-tenant service link ---
+ERROR:  insert or update on table "deployment_service_users" violates foreign key constraint "fk_deployment_service_users_user"
+DETAIL:  Key (user_id, workspace_id)=(2, 1) is not present in table "users".
+--- Attack 2: duplicate event ---
+ERROR:  duplicate key value violates unique constraint "events_default_workspace_id_event_key_occurred_at_key"
+DETAIL:  Key (workspace_id, event_key, occurred_at)=(1, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 2024-06-01 00:00:00+00) already exists.
+--- Attack 3: phantom parameter stamp ---
+ERROR:  insert or update on table "figures" violates foreign key constraint "fk_figures_parameter_set"
+DETAIL:  Key (workspace_id, parameter_set_version)=(1, 9) is not present in table "parameter_sets".
