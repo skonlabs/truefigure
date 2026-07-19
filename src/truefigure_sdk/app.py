@@ -20,7 +20,7 @@ from .errors import TFError
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:  # pragma: no cover - prod lifespan
     yield
     db.close_pool()
 

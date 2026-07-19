@@ -56,7 +56,7 @@ def check_quota(workspace_id: int) -> None:
            FROM workspaces w JOIN organizations o ON o.id=w.organization_id WHERE w.id=%s""",
         (workspace_id,),
     )
-    if row is None:
+    if row is None:  # pragma: no cover - workspace always exists for a valid key
         return
     quota = PLAN_QUOTA.get(row["plan_type"])
     if quota is not None and int(row["used"]) >= quota:

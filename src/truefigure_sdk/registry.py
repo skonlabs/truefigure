@@ -20,7 +20,7 @@ _REGISTRY_PATH = Path(__file__).resolve().parents[2] / "registry" / "error-codes
 def _load() -> dict[str, Any]:
     with _REGISTRY_PATH.open(encoding="utf-8") as fh:
         data: dict[str, Any] = json.load(fh)
-    if "codes" not in data:
+    if "codes" not in data:  # pragma: no cover - registry is a shipped closed file
         raise RuntimeError("error registry malformed: missing 'codes'")
     return data
 

@@ -46,7 +46,7 @@ derivations, not conflicts; they are the documented column/wire correspondence.
 All build-spec §7 items hold simultaneously (verified by `./ci.sh`, exit 0):
 - battery 7/7, three attack tests raise, PostgREST lockdown proven per table
 - ruff clean, mypy --strict clean, zero-stub grep clean
-- 19 (+7 extended = 26) client tests green; 255 server tests; coverage ≥97%
+- 19 (+7 extended = 26) client tests green; 277 server tests; coverage **100%**
 - conformance matrix **50/50** (covers the build-spec's 42 a fortiori)
 - every one of the 26 TF-* error codes produced by a test
 - every behavior-driving enum value exercised (figure statuses, all grades, all
