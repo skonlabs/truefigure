@@ -131,6 +131,26 @@ def auth(secret: str) -> dict[str, str]:
 
 
 @pytest.fixture()
+def sandbox() -> Iterator[dict[str, str]]:
+    """A sandbox-environment tenant with a TEST-mode key (echo-vs-persist path)."""
+    import re
+
+    from truefigure_sdk import config
+
+    os.environ["TF_ENVIRONMENT"] = "sandbox"
+    config.get_settings.cache_clear()
+    run_ops("org", "create", "--ref", "org_sbx", "--legal-name", "Sbx", "--plan", "team")
+    run_ops("workspace", "create", "--org-ref", "org_sbx", "--ref", "ws_sbx", "--name", "Sbx",
+            "--environment", "sandbox")
+    run_ops("user", "create", "--workspace-ref", "ws_sbx", "--user-ref", "u_s")
+    out = run_ops("key", "issue", "--workspace-ref", "ws_sbx", "--owner-user-ref", "u_s", "--mode", "test")
+    secret = re.search(r"SECRET \(shown once, store it now\): (\S+)", out).group(1)  # type: ignore[union-attr]
+    yield {"key": secret, "workspace": "ws_sbx"}
+    os.environ["TF_ENVIRONMENT"] = "production"
+    config.get_settings.cache_clear()
+
+
+@pytest.fixture()
 async def client() -> Any:
     """An httpx AsyncClient bound to the FastAPI app via ASGI transport."""
     import httpx

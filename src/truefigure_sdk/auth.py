@@ -88,10 +88,12 @@ def resolve_key(presented_key: str) -> Principal:
     if row is None or row["api_key_status"] != "active":
         raise TFError("TF-AUTH-001", detail="key not found or revoked")
 
-    # Mode must match the server environment: a test key cannot act in production
-    # (and a production key cannot act in the sandbox).
+    # Mode must match the server environment: production-mode keys serve the
+    # production environment; test-mode keys serve the sandbox environment
+    # (a test key cannot act in production — TF-AUTH-003).
     settings = get_settings()
-    if row["api_key_mode"] != settings.environment:
+    expected_mode = "production" if settings.environment == "production" else "test"
+    if row["api_key_mode"] != expected_mode:
         raise TFError(
             "TF-AUTH-003",
             detail=f"{row['api_key_mode']} key used against {settings.environment} environment",
