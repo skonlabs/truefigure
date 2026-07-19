@@ -27,12 +27,19 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="TrueFigure SDK", version="1.0", lifespan=lifespan)
 
-from . import config_plane, imports, ingest, webhooks_delivery  # noqa: E402  (routers, imported after app)
+from . import (  # noqa: E402  (routers, imported after app)
+    config_plane,
+    imports,
+    ingest,
+    read_plane,
+    webhooks_delivery,
+)
 
 app.include_router(config_plane.router)
 app.include_router(ingest.router)
 app.include_router(imports.router)
 app.include_router(webhooks_delivery.router)
+app.include_router(read_plane.router)
 
 
 @app.middleware("http")

@@ -317,6 +317,23 @@ def build_parser() -> argparse.ArgumentParser:
     whd.add_argument("--limit", type=int, default=100)
     whd.set_defaults(func=webhooks_deliver)
 
+    eng = sub.add_parser("engine").add_subparsers(dest="cmd", required=True)
+    er = eng.add_parser("run")
+    er.add_argument("--deployment-ref", required=True)
+    er.add_argument("--period", required=True)
+    er.set_defaults(func=engine_run)
+
+    rep = sub.add_parser("report").add_subparsers(dest="cmd", required=True)
+    ri = rep.add_parser("issue")
+    ri.add_argument("--deployment-ref", required=True)
+    ri.add_argument("--period", required=True)
+    ri.set_defaults(func=report_issue)
+
+    mon = sub.add_parser("monitors").add_subparsers(dest="cmd", required=True)
+    mr = mon.add_parser("run")
+    mr.add_argument("--workspace-ref", required=True)
+    mr.set_defaults(func=monitors_run)
+
     return p
 
 
@@ -349,6 +366,43 @@ def webhooks_deliver(a: argparse.Namespace) -> None:
 
     counts = webhooks_delivery.deliver_once(webhooks_delivery._default_sender, limit=a.limit)
     print("deliveries: " + ", ".join(f"{k}={v}" for k, v in counts.items()))
+
+
+def _resolve_dep_ids(deployment_ref: str) -> tuple[int, int]:
+    with _conn() as c, c.cursor() as cur:
+        row = _one(cur, "SELECT id, workspace_id FROM deployments WHERE deployment_ref=%s", (deployment_ref,))
+        return int(row["workspace_id"]), int(row["id"])
+
+
+def engine_run(a: argparse.Namespace) -> None:
+    _add_src_path()
+    from truefigure_sdk import engine
+
+    ws, dep = _resolve_dep_ids(a.deployment_ref)
+    written = engine.compute_deployment(ws, dep, a.period)
+    print(f"engine: computed {len(written)} figures for {a.deployment_ref} {a.period}: {', '.join(written)}")
+
+
+def report_issue(a: argparse.Namespace) -> None:
+    _add_src_path()
+    from truefigure_sdk import engine
+
+    ws, dep = _resolve_dep_ids(a.deployment_ref)
+    ref = engine.issue_report(ws, dep, a.period)
+    print(f"report issued: {ref} for {a.deployment_ref} {a.period}")
+
+
+def monitors_run(a: argparse.Namespace) -> None:
+    _add_src_path()
+    from truefigure_sdk import engine
+
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT id FROM workspaces WHERE workspace_ref=%s", (a.workspace_ref,))
+        row = cur.fetchone()
+        if row is None:
+            raise SystemExit(f"workspace {a.workspace_ref} not found")
+    raised = engine.run_monitors(int(row["id"]))
+    print(f"monitors: raised {len(raised)} alerts")
 
 
 def main(argv: list[str] | None = None) -> None:
