@@ -491,7 +491,7 @@ async def create_webhook(request: Request, principal: Principal = Depends(requir
     for ev in body.events:
         if ev not in valid:
             raise TFError("TF-CFG-007", field_path="events", detail=f"unknown event type {ev}")
-    from .auth import hash_key
+    from . import secretbox
     with db.transaction() as cur:
         # Idempotent by (workspace, url, event set): return existing if present.
         cur.execute(
@@ -506,7 +506,7 @@ async def create_webhook(request: Request, principal: Principal = Depends(requir
             """INSERT INTO webhooks (workspace_id, webhook_status, webhook_event_type, webhook_ref, url,
                    secret_hash, created_by, updated_by)
                VALUES (%s,'unverified',%s::webhook_event_type[],%s,%s,%s,%s,%s) RETURNING webhook_ref""",
-            (principal.workspace_id, body.events, wh_ref, body.url, hash_key(body.secret), *_audit()),
+            (principal.workspace_id, body.events, wh_ref, body.url, secretbox.encrypt(body.secret), *_audit()),
         )
         w = cur.fetchone()
         assert w is not None

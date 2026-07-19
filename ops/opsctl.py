@@ -312,6 +312,11 @@ def build_parser() -> argparse.ArgumentParser:
     ir.add_argument("--import-id", required=True)
     ir.set_defaults(func=imports_run)
 
+    wh = sub.add_parser("webhooks").add_subparsers(dest="cmd", required=True)
+    whd = wh.add_parser("deliver")
+    whd.add_argument("--limit", type=int, default=100)
+    whd.set_defaults(func=webhooks_deliver)
+
     return p
 
 
@@ -336,6 +341,14 @@ def imports_run(a: argparse.Namespace) -> None:
 
     counts = imports.run_import(a.import_id)
     print("import " + a.import_id + ": " + ", ".join(f"{k}={v}" for k, v in counts.items()))
+
+
+def webhooks_deliver(a: argparse.Namespace) -> None:
+    _add_src_path()
+    from truefigure_sdk import webhooks_delivery
+
+    counts = webhooks_delivery.deliver_once(webhooks_delivery._default_sender, limit=a.limit)
+    print("deliveries: " + ", ".join(f"{k}={v}" for k, v in counts.items()))
 
 
 def main(argv: list[str] | None = None) -> None:
