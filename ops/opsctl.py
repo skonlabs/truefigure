@@ -307,18 +307,35 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--limit", type=int, default=500)
     pr.set_defaults(func=pipeline_run)
 
+    imp = sub.add_parser("imports").add_subparsers(dest="cmd", required=True)
+    ir = imp.add_parser("run")
+    ir.add_argument("--import-id", required=True)
+    ir.set_defaults(func=imports_run)
+
     return p
 
 
-def pipeline_run(a: argparse.Namespace) -> None:
+def _add_src_path() -> None:
     import os as _os
     import sys as _sys
 
     _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), "..", "src"))
+
+
+def pipeline_run(a: argparse.Namespace) -> None:
+    _add_src_path()
     from truefigure_sdk import pipeline
 
     counts = pipeline.run_pipeline(limit=a.limit)
     print("pipeline: " + ", ".join(f"{k}={v}" for k, v in counts.items()))
+
+
+def imports_run(a: argparse.Namespace) -> None:
+    _add_src_path()
+    from truefigure_sdk import imports
+
+    counts = imports.run_import(a.import_id)
+    print("import " + a.import_id + ": " + ", ".join(f"{k}={v}" for k, v in counts.items()))
 
 
 def main(argv: list[str] | None = None) -> None:
