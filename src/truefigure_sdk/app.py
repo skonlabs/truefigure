@@ -27,6 +27,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="TrueFigure SDK", version="1.0", lifespan=lifespan)
 
+from . import config_plane  # noqa: E402  (import after app for router registration)
+
+app.include_router(config_plane.router)
+
 
 @app.middleware("http")
 async def attach_request_id(request: Request, call_next: Any) -> Any:

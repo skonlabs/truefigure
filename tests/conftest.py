@@ -111,6 +111,26 @@ def ops() -> Any:
 
 
 @pytest.fixture()
+def tenant() -> dict[str, str]:
+    """Provision org_acme + prod workspace + admin (finance_params) via the ops CLI,
+    and issue a production workspace-scoped key. Returns the key secret + refs."""
+    import re
+
+    run_ops("org", "create", "--ref", "org_acme", "--legal-name", "Acme Inc", "--plan", "enterprise")
+    run_ops("workspace", "create", "--org-ref", "org_acme", "--ref", "ws_prod", "--name", "Prod",
+            "--environment", "production")
+    run_ops("user", "create", "--workspace-ref", "ws_prod", "--user-ref", "u_admin", "--role", "finance_params")
+    out = run_ops("key", "issue", "--workspace-ref", "ws_prod", "--owner-user-ref", "u_admin",
+                  "--mode", "production", "--scope", "workspace", "--role", "finance_params")
+    secret = re.search(r"SECRET \(shown once, store it now\): (\S+)", out).group(1)  # type: ignore[union-attr]
+    return {"key": secret, "workspace": "ws_prod", "org": "org_acme"}
+
+
+def auth(secret: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {secret}"}
+
+
+@pytest.fixture()
 async def client() -> Any:
     """An httpx AsyncClient bound to the FastAPI app via ASGI transport."""
     import httpx

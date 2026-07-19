@@ -64,3 +64,19 @@ def key_prefix_to_mode(key: str) -> str | None:
 
 def mode_to_key_prefix(mode: str) -> str:
     return _MODE_TO_PREFIX[mode]
+
+
+# ---- roster kind <-> user_type VALUE transform ------------------------------
+# openapi roster `kind` enum = [person, shared, service, bot]; schema user_type
+# enum = [user, shared, service, bot]. Only `person` <-> `user` differs; the
+# other three are identical. (Recorded in docs/sdk_discrepancies.md.)
+_KIND_TO_USER_TYPE = {"person": "user", "shared": "shared", "service": "service", "bot": "bot"}
+_USER_TYPE_TO_KIND = {v: k for k, v in _KIND_TO_USER_TYPE.items()}
+
+
+def kind_to_user_type(kind: str) -> str:
+    return _KIND_TO_USER_TYPE.get(kind, kind)
+
+
+def user_type_to_kind(user_type: str) -> str:
+    return _USER_TYPE_TO_KIND.get(user_type, user_type)
