@@ -4,23 +4,20 @@ Per the build rule "machine artifacts win over prose AND the disagreement goes i
 your discrepancy report; Ambiguity = STOP and record the question; never guess."
 This file is updated every phase. Nothing here was silently resolved by guessing.
 
-## §Blocking — two authoritative inputs are absent from the workspace
-Neither is present in `truefigure-sdk-package.zip` nor the uploads folder (searched):
-
-1. **`TrueFigure_SDK_Specification.docx`** (authority rank #2). Supplies endpoint
-   semantics, the **§1.5 population map** (which defines the exact ops-CLI scope in
-   build-spec §5), grade rules, refusal honesty, and the no-content guarantee prose.
+## §Blocking — one authoritative input still absent
+Status update:
+1. **`TrueFigure_SDK_Specification.docx`** (authority rank #2) — **RECEIVED.** §1.5
+   population map, wire conventions §1.1, enums §2, event model §3 now in hand and
+   drive P1+ (the ops-CLI scope is taken directly from the §1.5 writer/actor table).
 2. **`TrueFigure_Use_Case_Specification`** (42 UCs + **BR-001..BR-022**), authority
-   rank #4 and the entire target of the §0 "100% mandate" (42/42 conformance). The
-   business rules referenced throughout build-spec §4 (BR-002, BR-005, BR-011,
-   BR-016, BR-022, …) are defined only here.
+   rank #4 — **STILL MISSING.** Not in the zip or uploads. It is the entire target of
+   the §0 "100% mandate" (42/42 conformance) and the only definition of BR-001..BR-022
+   (referenced by build-spec §4: BR-002, BR-005, BR-011, BR-016, BR-022, …).
 
-Impact: **P0 is fully buildable without them** (done — see below). **P1–P7** are
-partially specified by the machine artifacts + `docs/semantics.md` + `IMPLEMENTATION.md`
-+ the Data Dictionary, but the §1.5 provisioning split and BR semantics need the SDK
-Spec. **P8 is impossible** without the Use-Case Specification — the 42 UCs cannot be
-invented (doing so is defined as a defect). Requested by name; build paused at the
-P0/P1 boundary pending delivery.
+Impact: **P0 and P1 are complete and gated** (see below). **P2–P7** are now buildable
+from the SDK Spec + machine artifacts. **P8 remains impossible** without the Use-Case
+Specification — the 42 UCs cannot be invented (a defect by rule). Requested by name;
+P8 is the only phase blocked. `ci.sh` marks it PENDING and does not fake success.
 
 ## Machine-artifact vs prose disagreements found so far
 | # | Where | Says | Wins | Note |

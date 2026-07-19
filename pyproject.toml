@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "truefigure-sdk-server"
+version = "0.1.0"
+description = "TrueFigure SDK server implementation"
+requires-python = ">=3.11"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["truefigure_sdk"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+# Pinned to the interpreter present in CI (3.11). The code is 3.12-compatible;
+# a 3.12 image can bump this. Keeps ruff from suggesting 3.12-only rewrites
+# (e.g. the PEP 695 `type` statement) that would break on the 3.11 runtime.
+target-version = "py311"
+src = ["src", "ops", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501", "B008"]  # B008: FastAPI Depends() in defaults is idiomatic
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+files = ["src"]

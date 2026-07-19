@@ -83,11 +83,11 @@ else pend "P1" "src/ has no server code yet"; fi
 
 # ---- 6. Lint (ruff) --------------------------------------------------------
 say "ruff"
-if [ -d src ] && [ -n "$(find src -name '*.py' 2>/dev/null)" ]; then ruff check src/ && grn "ruff clean" || red "ruff failed"; else pend "P1" "no src/ to lint"; fi
+if [ -d src ] && [ -n "$(find src -name '*.py' 2>/dev/null)" ]; then python3 -m ruff check src/ && grn "ruff clean" || red "ruff failed"; else pend "P1" "no src/ to lint"; fi
 
 # ---- 7. Types (mypy --strict) ----------------------------------------------
 say "mypy --strict"
-if [ -d src ] && [ -n "$(find src -name '*.py' 2>/dev/null)" ]; then mypy --strict src/ && grn "mypy clean" || red "mypy failed"; else pend "P1" "no src/ to type-check"; fi
+if [ -d src ] && [ -n "$(find src -name "*.py" 2>/dev/null)" ]; then python3 -m mypy --strict src/ && grn "mypy clean" || red "mypy failed"; else pend "P1" "no src/ to type-check"; fi
 
 # ---- 8. Python client tests (the 19 must stay green) -----------------------
 say "python client tests (19 must stay green)"
@@ -97,9 +97,14 @@ else pend "P0" "pytest/client not available"; fi
 
 # ---- 9. Server + conformance test suite ------------------------------------
 say "server tests + coverage >= 90%"
-if [ -d tests/conformance ] && [ -n "$(find tests -name 'test_*.py' 2>/dev/null)" ]; then
-  pytest --cov=src --cov-report=term-missing --cov-fail-under=90 tests/ && grn "tests + coverage OK" || red "tests/coverage failed"
-else pend "P1-P8" "server + conformance suite not built (blocked on SDK Spec + Use-Case Spec)"; fi
+if [ -n "$(find tests -name 'test_*.py' 2>/dev/null)" ]; then
+  # Server tests connect via psycopg over TCP (TF_TEST_ADMIN_URL); they build
+  # their own tf_test database and apply migrations. Requires a login role.
+  export TF_TEST_ADMIN_URL="${TF_TEST_ADMIN_URL:-postgresql://tf:tf@127.0.0.1:5432/postgres}"
+  export TF_ENVIRONMENT="${TF_ENVIRONMENT:-production}"
+  python3 -m pytest --cov=src --cov-report=term-missing --cov-fail-under=90 tests/ \
+    && grn "server tests + coverage >= 90%" || red "server tests/coverage failed"
+else pend "P1-P8" "server + conformance suite not built"; fi
 
 # ---- 10. Conformance matrix 42/42 ------------------------------------------
 say "use-case conformance matrix (42/42)"
