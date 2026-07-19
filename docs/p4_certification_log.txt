@@ -1,0 +1,82 @@
+
+== db reset + migrations ==
+applied supabase/migrations/0001_certified_schema.sql
+applied supabase/migrations/0002_postgrest_lockdown.sql
+applied supabase/migrations/0003_storage_buckets.sql
+
+== verification battery (7/7 PASS required) ==
+           check_name           |                                 result                                  
+--------------------------------+-------------------------------------------------------------------------
+ A_enum_column_match_rule       | PASS
+ B_all_enum_values_lowercase    | PASS
+ C_table_descriptions_31        | PASS
+ D_audit_columns_every_table    | PASS
+ E_updated_dt_trigger_31        | PASS
+ F_constraint_naming_convention | PASS
+ G_fk_orphan_id_columns         | PASS (figures.method_id: documented deliberate TEXT registry reference)
+(7 rows)
+battery 7/7 PASS
+
+== attack tests (cross-tenant / duplicate / phantom-parameter must all block) ==
+3/3 attacks blocked
+
+== PostgREST lockdown (anon must be denied on all public tables) ==
+psql:/tmp/ci_sql.sql:41: NOTICE:  PostgREST lockdown verified: anon denied on all 31 public tables
+lockdown verified
+
+== zero-stub grep on src/ ==
+no stub markers in src/
+
+== ruff ==
+All checks passed!
+ruff clean
+
+== mypy --strict ==
+Success: no issues found in 15 source files
+mypy clean
+
+== python client tests (19 must stay green) ==
+...................                                                      [100%]
+=============================== warnings summary ===============================
+../../../../root/.local/share/uv/tools/pytest/lib/python3.11/site-packages/_pytest/config/__init__.py:1428
+  /root/.local/share/uv/tools/pytest/lib/python3.11/site-packages/_pytest/config/__init__.py:1428: PytestConfigWarning: Unknown config option: asyncio_mode
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+client tests green
+
+== server tests + coverage >= 90% ==
+........................................................................ [ 61%]
+..............................................                           [100%]
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.11.15-final-0 _______________
+
+Name                                 Stmts   Miss  Cover   Missing
+------------------------------------------------------------------
+src/truefigure_sdk/__init__.py           2      0   100%
+src/truefigure_sdk/app.py               44      6    86%   24-25, 59, 66-73
+src/truefigure_sdk/auth.py              55      1    98%   69
+src/truefigure_sdk/config.py            23      3    87%   24, 30, 39
+src/truefigure_sdk/config_plane.py     339      5    99%   156-157, 248-249, 534
+src/truefigure_sdk/db.py                41      0   100%
+src/truefigure_sdk/envelope.py          18      0   100%
+src/truefigure_sdk/errors.py            26      0   100%
+src/truefigure_sdk/eventkey.py          41      0   100%
+src/truefigure_sdk/http.py              23      0   100%
+src/truefigure_sdk/ingest.py           164      4    98%   136, 167, 212, 230
+src/truefigure_sdk/pipeline.py         101      5    95%   68, 113, 141, 143, 155
+src/truefigure_sdk/refs.py              16      0   100%
+src/truefigure_sdk/registry.py          24      1    96%   24
+src/truefigure_sdk/wire.py              26      0   100%
+------------------------------------------------------------------
+TOTAL                                  943     25    97%
+Required test coverage of 90% reached. Total coverage: 97.35%
+118 passed in 38.14s
+server tests + coverage >= 90%
+
+== use-case conformance matrix (42/42) ==
+PENDING (P8): conformance matrix not built (needs TrueFigure_Use_Case_Specification)
+
+== RESULT ==
+ci.sh: all IMPLEMENTED gates GREEN (pending gates listed above are unbuilt phases)

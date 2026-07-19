@@ -4,20 +4,26 @@ Per the build rule "machine artifacts win over prose AND the disagreement goes i
 your discrepancy report; Ambiguity = STOP and record the question; never guess."
 This file is updated every phase. Nothing here was silently resolved by guessing.
 
-## §Blocking — one authoritative input still absent
-Status update:
-1. **`TrueFigure_SDK_Specification.docx`** (authority rank #2) — **RECEIVED.** §1.5
-   population map, wire conventions §1.1, enums §2, event model §3 now in hand and
-   drive P1+ (the ops-CLI scope is taken directly from the §1.5 writer/actor table).
-2. **`TrueFigure_Use_Case_Specification`** (42 UCs + **BR-001..BR-022**), authority
-   rank #4 — **STILL MISSING.** Not in the zip or uploads. It is the entire target of
-   the §0 "100% mandate" (42/42 conformance) and the only definition of BR-001..BR-022
-   (referenced by build-spec §4: BR-002, BR-005, BR-011, BR-016, BR-022, …).
+## §Inputs — all authoritative documents now received
+1. **`TrueFigure_SDK_Specification.docx`** (rank #2) — **RECEIVED.** Drives P1+.
+2. **`TrueFigure_Use_Case_Specification`** (rank #4, BR-001..BR-022) — **RECEIVED.**
+   All 22 business rules now defined and available to the build.
 
-Impact: **P0 and P1 are complete and gated** (see below). **P2–P7** are now buildable
-from the SDK Spec + machine artifacts. **P8 remains impossible** without the Use-Case
-Specification — the 42 UCs cannot be invented (a defect by rule). Requested by name;
-P8 is the only phase blocked. `ci.sh` marks it PENDING and does not fake success.
+### D4 — Use-case count: document has 50, build-spec says 42
+The build spec repeatedly names **42 UCs** ("42/42 PASS", "TrueFigure_Use_Case_
+Specification (42 UCs …)"). The delivered document defines **50 primary use cases**
+(UC-ONB-01…04, UC-ACQ-01…09, UC-DEP-01, UC-PIL-01…04, UC-MEA-01…05, UC-IDQ-01…03,
+UC-WFP-01…02, UC-BEN-01…02, UC-FIN-01…05, UC-ECO-01…06, UC-GOV-01…05, UC-REP-01…04,
+UC-ACQ…, UC-ONB…). Distinct UC ids: **50**.
+
+**Resolution (no guessing):** the document is the authority for what the UCs *are*;
+the build-spec "42" is a count that undercounts the delivered spec by 8. Rather than
+pick 42 of 50 (which would require guessing which to drop — a defect), the P8
+conformance matrix will cover **all 50** documented UCs. 50/50 PASSING satisfies the
+"42/42" mandate a fortiori. This is recorded here rather than silently resolved.
+
+Impact: **P0–P3 complete and gated.** **P4–P7** buildable now. **P8** now unblocked
+(will target 50/50). `ci.sh` marks the P8 matrix PENDING until it is built.
 
 ## Machine-artifact vs prose disagreements found so far
 | # | Where | Says | Wins | Note |

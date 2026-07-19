@@ -110,7 +110,7 @@ else pend "P1-P8" "server + conformance suite not built"; fi
 say "use-case conformance matrix (42/42)"
 if [ -f tests/conformance/matrix_runner.py ]; then
   python3 tests/conformance/matrix_runner.py && grn "42/42 conformance" || red "conformance matrix not 42/42"
-else pend "P8" "conformance matrix not built (needs TrueFigure_Use_Case_Specification)"; fi
+else pend "P8" "conformance matrix not built yet (Use-Case Spec received; targets 50 UCs)"; fi
 
 say "RESULT"
 if [ "$FAIL" -eq 0 ]; then grn "ci.sh: all IMPLEMENTED gates GREEN (pending gates listed above are unbuilt phases)"; exit 0; else red "ci.sh: FAILURES above"; exit 1; fi

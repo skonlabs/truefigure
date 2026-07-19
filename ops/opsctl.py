@@ -302,7 +302,23 @@ def build_parser() -> argparse.ArgumentParser:
     pe.add_argument("--start", default=None)
     pe.set_defaults(func=partitions_ensure)
 
+    pipe = sub.add_parser("pipeline").add_subparsers(dest="cmd", required=True)
+    pr = pipe.add_parser("run")
+    pr.add_argument("--limit", type=int, default=500)
+    pr.set_defaults(func=pipeline_run)
+
     return p
+
+
+def pipeline_run(a: argparse.Namespace) -> None:
+    import os as _os
+    import sys as _sys
+
+    _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), "..", "src"))
+    from truefigure_sdk import pipeline
+
+    counts = pipeline.run_pipeline(limit=a.limit)
+    print("pipeline: " + ", ".join(f"{k}={v}" for k, v in counts.items()))
 
 
 def main(argv: list[str] | None = None) -> None:
