@@ -1,0 +1,459 @@
+openapi: 3.1.0
+info:
+  title: TrueFigure SDK API
+  version: "1.0.0"
+  description: >
+    Measurement contract for AI value verification. Three planes: write (events),
+    config (deployments, namespaces, parameters, labels, webhooks), read (live facts,
+    finalized figures). The SDK witnesses facts; measurement happens server-side by an
+    independent engine. Structural guarantees: no content fields (BR-001), no value
+    assertions (witness-only), fees never depend on findings (BR-002; billing has no
+    read path here), refusals are first-class responses (BR-005), ingestion is
+    idempotent by natural key (BR-009), every read against customer systems is
+    auditable (BR-020). All responses are JSON objects with the uniform envelope
+    { data, meta, errors }.
+servers:
+  - url: https://api.truefigure.io
+security:
+  - bearerAuth: []
+tags:
+  - name: write-plane
+  - name: config-plane
+  - name: read-plane
+paths:
+  /v1/events:batch:
+    post:
+      tags: [write-plane]
+      operationId: ingestEvents
+      summary: Single ingestion door for all event families (max 500/batch)
+      description: >
+        Idempotent by natural key per family; re-sends are no-ops (TF-EVT-005, informational).
+        Header X-TrueFigure-Mode: test returns synchronous parse-echo objects per event
+        (resolved identity, matched work item, action class, accepted/reason) and stores nothing.
+        Production mode validates + appends; identity resolution and joins run asynchronously
+        (inspect via /v1/events/{event_key}/status).
+      parameters:
+        - in: header
+          name: X-TrueFigure-Mode
+          schema: { type: string, enum: [production, test], default: production }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "../schemas/events.schema.json" }
+      responses:
+        "200":
+          description: Per-item results (accepted / rejected(reason) / duplicate) or echo objects in test mode.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BatchResponse" }
+        "413": { $ref: "#/components/responses/Err" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+  /v1/events/{event_key}/status:
+    get:
+      tags: [write-plane]
+      operationId: eventStatus
+      summary: Ingestion inspection (production debugging without support tickets)
+      parameters:
+        - { in: path, name: event_key, required: true, schema: { type: string }, description: URL-safe natural key hash returned in batch results }
+      responses:
+        "200":
+          description: "accepted | rejected(reason) | resolved | joined | excluded(reason)"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventStatus" }
+  /v1/deployments:
+    post:
+      tags: [config-plane]
+      operationId: registerDeployment
+      summary: Register a measured deployment (type, planned rollout date for UC-PIL-01)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeploymentCreate" }
+      responses:
+        "201": { $ref: "#/components/responses/Ok" }
+        "409": { $ref: "#/components/responses/Err" }
+    get:
+      tags: [config-plane]
+      operationId: listDeployments
+      parameters: [ { $ref: "#/components/parameters/cursor" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/deployments/{deployment_id}:
+    get:
+      tags: [config-plane]
+      operationId: getDeployment
+      summary: Deployment detail incl. mode (planned|measured) and join metrics
+      parameters: [ { $ref: "#/components/parameters/deployment_id" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "404": { $ref: "#/components/responses/Err" }
+    patch:
+      tags: [config-plane]
+      operationId: updateDeployment
+      summary: Update name / planned_rollout_at; type is immutable once events exist (TF-CFG-006)
+      parameters: [ { $ref: "#/components/parameters/deployment_id" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "409": { $ref: "#/components/responses/Err" }
+  /v1/roster:batch:
+    post:
+      tags: [config-plane]
+      operationId: upsertRoster
+      summary: Upsert workspace roster users (identifiers per namespace, role, team) - the resolution target for identities and labor rates
+      description: Per-item results; upsert by user_ref; identifier uniqueness per namespace (TF-CFG-004 per item); inactive stops new resolution, never deletes history.
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/Err" }
+        "403": { $ref: "#/components/responses/Err" }
+  /v1/roster:
+    get:
+      tags: [config-plane]
+      operationId: listRoster
+      summary: List roster users (user_ref, identifiers, role, team, kind, status) - verification surface for sync jobs
+      parameters:
+        - { $ref: "#/components/parameters/cursor" }
+        - { in: query, name: status, schema: { type: string, enum: [active, inactive] } }
+        - { in: query, name: kind, schema: { type: string, enum: [person, shared, service, bot] } }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/deployments/{deployment_id}/license:
+    put:
+      tags: [config-plane]
+      operationId: declareLicense
+      summary: Declare the deployment's seat ledger (seats_paid, price, optional licensed_user_refs) feeding /live/usage
+      parameters: [ { $ref: "#/components/parameters/deployment_id" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { $ref: "#/components/responses/Err" }
+        "404": { $ref: "#/components/responses/Err" }
+    get:
+      tags: [config-plane]
+      operationId: getLicense
+      parameters: [ { $ref: "#/components/parameters/deployment_id" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/id-namespaces:
+    post:
+      tags: [config-plane]
+      operationId: registerIdNamespace
+      summary: Map integrator id namespaces (user_ref, work_item_id, assignee_ref) to platform namespaces; per-deployment or workspace default, and per source feed via source_ref
+      responses:
+        "201": { $ref: "#/components/responses/Ok" }
+        "409": { $ref: "#/components/responses/Err" }
+    get:
+      tags: [config-plane]
+      operationId: listIdNamespaces
+      parameters: [ { $ref: "#/components/parameters/cursor" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/parameters:
+    post:
+      tags: [config-plane]
+      operationId: createParameterVersion
+      summary: Versioned, effective-dated customer financial parameters (finance_params role; BR-016)
+      description: Labor rates per role/team, unit prices per meter, cost_per_error per class, deal values. Overlap-free effective windows enforced (TF-CFG-001).
+      responses:
+        "201": { $ref: "#/components/responses/Ok" }
+        "403": { $ref: "#/components/responses/Err" }
+        "409": { $ref: "#/components/responses/Err" }
+    get:
+      tags: [config-plane]
+      operationId: listParameterVersions
+      parameters: [ { $ref: "#/components/parameters/cursor" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/parameters/{version}:
+    get:
+      tags: [config-plane]
+      operationId: getParameterVersion
+      summary: Full parameter set for one version, with effective window and author trail
+      parameters:
+        - { in: path, name: version, required: true, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "404": { $ref: "#/components/responses/Err" }
+  /v1/qa-labels/schemas:
+    post:
+      tags: [config-plane]
+      operationId: registerLabelSchema
+      summary: Register a categorical QA label schema (prerequisite for qa_label signals; UC-IDQ-03)
+      responses:
+        "201": { $ref: "#/components/responses/Ok" }
+    get:
+      tags: [config-plane]
+      operationId: listLabelSchemas
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/webhooks:
+    post:
+      tags: [config-plane]
+      operationId: createWebhook
+      summary: "Subscribe to push events: figure.updated, alert.raised, refusal.lifted, report.issued"
+      responses:
+        "201": { $ref: "#/components/responses/Ok" }
+        "422": { $ref: "#/components/responses/Err" }
+    get:
+      tags: [config-plane]
+      operationId: listWebhooks
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/webhooks/{webhook_id}:
+    delete:
+      tags: [config-plane]
+      operationId: deleteWebhook
+      parameters:
+        - { in: path, name: webhook_id, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/imports:
+    post:
+      tags: [write-plane]
+      operationId: createImport
+      summary: Bulk NDJSON import job (backfill, publication bursts, migration) - same envelope schema and dedup, separate lane
+      responses:
+        "201": { $ref: "#/components/responses/Ok" }
+  /v1/imports/{import_id}:
+    get:
+      tags: [write-plane]
+      operationId: importStatus
+      parameters: [ { in: path, name: import_id, required: true, schema: { type: string } } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/change-events:
+    post:
+      tags: [config-plane]
+      operationId: declareChangeEvent
+      summary: Declare a change measurement must account for (cutover, seasonal, process, staffing, regulatory)
+      responses:
+        "201": { $ref: "#/components/responses/Ok" }
+    get:
+      tags: [config-plane]
+      operationId: listChangeEvents
+      parameters: [ { $ref: "#/components/parameters/cursor" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/mapping-contracts:
+    post:
+      tags: [config-plane]
+      operationId: createMappingContract
+      summary: Versioned source-format-to-event-field contract per source_ref (X-TrueFigure-Source association)
+      responses:
+        "201": { $ref: "#/components/responses/Ok" }
+    get:
+      tags: [config-plane]
+      operationId: listMappingContracts
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/whoami:
+    get:
+      tags: [config-plane]
+      operationId: whoami
+      description: Returns org_ref and plan_type of the owning organization, workspace_ref, environment, mode, key scope, and rate-limit tier.
+      summary: Key self-check - workspace, environment, mode, scope, roles, rate-limit tier
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/reports/{deployment_id}:
+    get:
+      tags: [read-plane]
+      operationId: listReports
+      parameters: [ { $ref: "#/components/parameters/deployment_id" }, { $ref: "#/components/parameters/cursor" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/reports/{deployment_id}/{report_id}:
+    get:
+      tags: [read-plane]
+      operationId: getReport
+      parameters:
+        - { $ref: "#/components/parameters/deployment_id" }
+        - { in: path, name: report_id, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/alerts:
+    get:
+      tags: [read-plane]
+      operationId: listAlerts
+      parameters:
+        - { in: query, name: deployment_id, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string, enum: [open, acked, resolved] } }
+        - { $ref: "#/components/parameters/cursor" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/alerts/{alert_id}:ack:
+    post:
+      tags: [read-plane]
+      operationId: ackAlert
+      parameters: [ { in: path, name: alert_id, required: true, schema: { type: string } } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/figures/{deployment_id}/{figure_id}/lineage:
+    get:
+      tags: [read-plane]
+      operationId: figureLineage
+      summary: Full evidence chain for one figure version - counts by family/origin/source, exclusions, versions, change treatments
+      parameters:
+        - { $ref: "#/components/parameters/deployment_id" }
+        - { in: path, name: figure_id, required: true, schema: { type: string } }
+        - { in: query, name: version, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/webhooks/{webhook_id}/deliveries:
+    get:
+      tags: [read-plane]
+      operationId: webhookDeliveries
+      parameters:
+        - { in: path, name: webhook_id, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/cursor" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/live/usage/{deployment_id}:
+    get:
+      tags: [read-plane]
+      operationId: liveUsage
+      summary: "Live facts: seats, activation, usage spread (measured grade, seconds-fresh)"
+      parameters: [ { $ref: "#/components/parameters/deployment_id" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/live/cost/{deployment_id}:
+    get:
+      tags: [read-plane]
+      operationId: liveCost
+      summary: "Live facts: consumption meters x current parameter version = cost accumulation"
+      parameters: [ { $ref: "#/components/parameters/deployment_id" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/live/health/{deployment_id}:
+    get:
+      tags: [read-plane]
+      operationId: integrationHealth
+      summary: "Integration health: accept rate, join rate, identity resolution rate, drift warnings"
+      parameters: [ { $ref: "#/components/parameters/deployment_id" } ]
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/figures/{deployment_id}:
+    get:
+      tags: [read-plane]
+      operationId: listFigures
+      summary: Latest finalized computations with full stamp bundles; refused figures are first-class
+      description: >
+        Never recomputed per call. Each figure carries grade (estimate|measured|verified),
+        method id+version, parameter_set_version, computed_at, period, next_compute_at,
+        realized/capacity class where applicable, and a lineage pointer. Refusals return
+        { status: refused, reason, margin_exceeds_effect, expected_verdict_date } (BR-005).
+        Immutable by version: cacheable forever by (figure_id, version).
+      parameters:
+        - { $ref: "#/components/parameters/deployment_id" }
+        - { in: query, name: period, schema: { type: string }, description: "e.g. 2026-Q2; omitted = latest" }
+        - { $ref: "#/components/parameters/cursor" }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+  /v1/figures/{deployment_id}/{figure_id}:
+    get:
+      tags: [read-plane]
+      operationId: getFigure
+      parameters:
+        - { $ref: "#/components/parameters/deployment_id" }
+        - { in: path, name: figure_id, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "404": { $ref: "#/components/responses/Err" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, description: "Workspace/deployment-scoped API keys; test keys cannot write production (TF-AUTH-003)." }
+  parameters:
+    deployment_id: { in: path, name: deployment_id, required: true, schema: { type: string } }
+    cursor: { in: query, name: cursor, schema: { type: string }, description: Cursor pagination on all list endpoints. }
+  responses:
+    Ok:
+      description: Uniform envelope.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+    Err:
+      description: Uniform envelope with errors[] populated from the closed registry.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+    RateLimited:
+      description: TF-RATE-001 with retry_after seconds.
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+  schemas:
+    Envelope:
+      type: object
+      required: [data, meta, errors]
+      properties:
+        data: { type: [object, "null"] }
+        meta:
+          type: object
+          required: [schema_version, request_id, as_of]
+          properties:
+            schema_version: { type: string }
+            request_id: { type: string }
+            as_of: { type: string, format: date-time }
+            deployment_id: { type: string }
+            next_cursor: { type: [string, "null"] }
+        errors:
+          type: array
+          items: { $ref: "#/components/schemas/ErrorObject" }
+    ErrorObject:
+      type: object
+      required: [code, message, retryable, request_id]
+      properties:
+        code: { type: string, description: "NP-<PLANE>-<NNN> from the closed registry" }
+        message: { type: string }
+        field_path: { type: [string, "null"], description: "JSON pointer to the offending field" }
+        expected: { type: [string, "null"] }
+        received: { type: [string, "null"] }
+        retryable: { type: boolean }
+        retry_after: { type: [integer, "null"] }
+        doc_url: { type: string }
+        request_id: { type: string }
+    BatchResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          description: Per-item, index-aligned with the request batch. Never all-or-nothing.
+          items:
+            type: object
+            required: [index, status, event_key]
+            properties:
+              index: { type: integer }
+              status: { type: string, enum: [accepted, rejected, duplicate] }
+              event_key: { type: string, description: URL-safe natural-key hash for /status inspection }
+              error: { $ref: "#/components/schemas/ErrorObject" }
+              echo:
+                type: object
+                description: Test mode only.
+                properties:
+                  resolved_person: { type: [string, "null"] }
+                  resolution_basis: { type: string, enum: [deterministic, heuristic, unresolved] }
+                  matched_work_item: { type: [string, "null"] }
+                  action_class: { type: string }
+                  accepted: { type: boolean }
+                  reason: { type: [string, "null"] }
+    EventStatus:
+      type: object
+      required: [event_key, status]
+      properties:
+        event_key: { type: string }
+        status: { type: string, enum: [accepted, rejected, resolved, joined, excluded] }
+        reason: { type: [string, "null"] }
+        resolved_person: { type: [string, "null"] }
+        joined_work_item: { type: [string, "null"] }
+    DeploymentCreate:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string }
+        type: { type: string, enum: [saas_tool, in_house, agent, decision_ai] }
+        external_ref: { type: string }
+        planned_rollout_at: { type: string, format: date-time, description: Enables planned mode and live pre-rollout baseline (UC-PIL-01). }
+        service_user_refs: { type: array, items: { type: string }, description: Roster service accounts (kind=service) this deployment operates inside incumbent systems; customer-origin events acted by them corroborate autonomous-action claims (G6). }

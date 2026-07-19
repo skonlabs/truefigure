@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.truefigure.io/v1/events.json",
+  "title": "TrueFigure SDK Event Contract v1",
+  "description": "Envelope + four event families. Structural guarantees: no content fields exist in any schema (BR-001); no value/savings/ROI fields exist (witness, never valuation); user_ref is pseudonymous (resolved server-side, UC-IDQ-01). additionalProperties=false everywhere makes these guarantees mechanical.",
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "envelope": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "deployment_id",
+        "event_type",
+        "origin",
+        "payload"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+$"
+        },
+        "deployment_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "type": "string",
+          "enum": [
+            "activity",
+            "lifecycle",
+            "cost_meter",
+            "quality_signal",
+            "revenue_signal"
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "customer_system",
+            "vendor_product"
+          ]
+        },
+        "idempotency_scope": {
+          "type": "string",
+          "description": "Optional integrator-supplied scope suffix appended to the natural key; rarely needed."
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/activity"
+            },
+            {
+              "$ref": "#/$defs/lifecycle"
+            },
+            {
+              "$ref": "#/$defs/cost_meter"
+            },
+            {
+              "$ref": "#/$defs/quality_signal"
+            },
+            {
+              "$ref": "#/$defs/revenue_signal"
+            }
+          ]
+        }
+      }
+    },
+    "activity": {
+      "type": "object",
+      "description": "The AI touched this work, attributable to a person. DEDUP SCOPE: deployment \u2014 key (deployment_id, user_ref, work_item_id, timestamp, action_type).",
+      "required": [
+        "user_ref",
+        "timestamp",
+        "work_item_id",
+        "action_type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "user_ref": {
+          "type": "string",
+          "description": "Pseudonymous integrator key; resolved against roster server-side. Never an email if avoidable."
+        },
+        "timestamp": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "work_item_id": {
+          "type": "string"
+        },
+        "action_type": {
+          "type": "string",
+          "enum": [
+            "suggestion_shown",
+            "suggestion_accepted",
+            "suggestion_rejected",
+            "draft_generated",
+            "autocomplete_used",
+            "case_handled_autonomous",
+            "escalated_to_human",
+            "lookup_performed",
+            "classification_applied",
+            "other_assist"
+          ]
+        },
+        "model_version_ref": {
+          "type": "string",
+          "description": "Optional model/version tag enabling UC-PIL-04 version-boundary measurement."
+        },
+        "session_ref": {
+          "type": "string",
+          "description": "Optional opaque session grouping key."
+        }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "description": "Work-item lifecycle transitions; enables time/labor effects and baselines. Emit for EVERY item in the measured workflow, AI-touched or not. DEDUP SCOPE: workspace \u2014 key (workspace, work_item_id, event, timestamp, status_to?); send each fact once even when multiple deployments measure the workflow.",
+      "required": [
+        "work_item_id",
+        "event",
+        "timestamp"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "work_item_id": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string",
+          "enum": [
+            "created",
+            "status_change",
+            "assigned",
+            "completed",
+            "reopened",
+            "escalated",
+            "transferred"
+          ]
+        },
+        "timestamp": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "status_from": {
+          "type": "string"
+        },
+        "status_to": {
+          "type": "string"
+        },
+        "assignee_ref": {
+          "type": "string",
+          "description": "Pseudonymous."
+        },
+        "category": {
+          "type": "string"
+        },
+        "size_band": {
+          "type": "string",
+          "enum": [
+            "xs", "s", "m", "l", "xl"
+          ]
+        }
+      }
+    },
+    "cost_meter": {
+      "type": "object",
+      "description": "Consumption facts, quantities only (prices live in /v1/parameters). COUNTER meters take incremental deltas; GAUGE meters take point-in-time readings. DEDUP SCOPE: deployment \u2014 key (deployment_id, meter, timestamp, meter_ref).",
+      "required": [
+        "meter",
+        "quantity",
+        "timestamp"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "meter": {
+          "type": "string",
+          "enum": [
+            "tokens_in",
+            "tokens_out",
+            "api_calls",
+            "compute_seconds",
+            "seats_active",
+            "storage_gb"
+          ]
+        },
+        "quantity": {
+          "type": "number",
+          "minimum": 0
+        },
+        "timestamp": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "meter_ref": {
+          "type": "string",
+          "description": "Optional sub-meter discriminator (model name, endpoint)."
+        }
+      }
+    },
+    "quality_signal": {
+      "type": "object",
+      "description": "Quality facts. qa_label usable at grade only after grader calibration (agreement threshold). DEDUP SCOPE: workspace \u2014 key (workspace, work_item_id, signal, timestamp).",
+      "required": [
+        "work_item_id",
+        "signal",
+        "timestamp"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "work_item_id": {
+          "type": "string"
+        },
+        "signal": {
+          "type": "string",
+          "enum": [
+            "error_found",
+            "rework_required",
+            "qa_label",
+            "customer_bounce",
+            "sla_breach"
+          ]
+        },
+        "timestamp": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "label_schema_ref": {
+          "type": "string",
+          "description": "Required when signal=qa_label; identifies the label schema registered in the config plane."
+        },
+        "label_value": {
+          "type": "string",
+          "description": "Categorical label value from the registered schema. Free text is rejected (BR-001 discipline)."
+        },
+        "error_class": {
+          "type": "string",
+          "description": "Categorical; maps to cost_per_error parameters."
+        }
+      }
+    },
+    "revenue_signal": {
+      "type": "object",
+      "description": "Revenue-adjacency facts, references only; nearest-touchpoint attribution. DEDUP SCOPE: workspace \u2014 key (workspace, work_item_id, revenue_ref, timestamp).",
+      "required": [
+        "work_item_id",
+        "revenue_ref",
+        "timestamp"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "work_item_id": {
+          "type": "string"
+        },
+        "revenue_ref": {
+          "type": "string",
+          "description": "Opaque reference to a deal/order/renewal in the customer's commercial system."
+        },
+        "timestamp": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "touchpoint": {
+          "type": "string",
+          "enum": [
+            "created",
+            "influenced",
+            "closed_adjacent"
+          ]
+        }
+      }
+    }
+  },
+  "type": "object",
+  "required": [
+    "events"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": {
+        "$ref": "#/$defs/envelope"
+      }
+    }
+  }
+}

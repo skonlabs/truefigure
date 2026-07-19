@@ -1,0 +1,214 @@
+{
+  "registry_version": "1.2.0",
+  "policy": "Closed enum. Codes are never reused or repurposed. Additions are additive within a major version. Format NP-<PLANE>-<NNN>.",
+  "codes": {
+    "TF-EVT-001": {
+      "name": "SCHEMA_VERSION_UNSUPPORTED",
+      "http": 400,
+      "retryable": false,
+      "fix_owner": "integrator",
+      "message": "Envelope schema_version is not supported by this server.",
+      "doc": "/docs/v1/errors#np-evt-001"
+    },
+    "TF-EVT-002": {
+      "name": "UNKNOWN_DEPLOYMENT",
+      "http": 404,
+      "retryable": false,
+      "fix_owner": "config_owner",
+      "message": "deployment_id is not registered.",
+      "doc": "/docs/v1/errors#np-evt-002"
+    },
+    "TF-EVT-003": {
+      "name": "MALFORMED_FIELD",
+      "http": 400,
+      "retryable": false,
+      "fix_owner": "integrator",
+      "message": "A field failed validation. See field_path, expected, received.",
+      "doc": "/docs/v1/errors#np-evt-003"
+    },
+    "TF-EVT-004": {
+      "name": "UNKNOWN_ID_NAMESPACE",
+      "http": 400,
+      "retryable": false,
+      "fix_owner": "config_owner",
+      "message": "user_ref or work_item_id namespace is not registered for this deployment.",
+      "doc": "/docs/v1/errors#np-evt-004"
+    },
+    "TF-EVT-005": {
+      "name": "DUPLICATE_EVENT",
+      "http": 200,
+      "retryable": false,
+      "fix_owner": "none",
+      "message": "Idempotent no-op: an event with this natural key already exists. Not a failure.",
+      "doc": "/docs/v1/errors#np-evt-005"
+    },
+    "TF-EVT-006": {
+      "name": "CONTENT_FIELD_REJECTED",
+      "http": 400,
+      "retryable": false,
+      "fix_owner": "integrator",
+      "message": "Payload contains a field that could carry prompt/response content. Structurally forbidden (BR-001).",
+      "doc": "/docs/v1/errors#np-evt-006"
+    },
+    "TF-EVT-007": {
+      "name": "BATCH_LIMIT_EXCEEDED",
+      "http": 413,
+      "retryable": true,
+      "fix_owner": "integrator",
+      "message": "Batch exceeds max_batch_size. Split and resend; idempotency makes resends safe.",
+      "doc": "/docs/v1/errors#np-evt-007"
+    },
+    "TF-EVT-008": {
+      "name": "VALUE_ASSERTION_REJECTED",
+      "http": 400,
+      "retryable": false,
+      "fix_owner": "integrator",
+      "message": "Payload contains a value/savings/ROI assertion field. The SDK witnesses facts; it never accepts valuations.",
+      "doc": "/docs/v1/errors#np-evt-008"
+    },
+    "TF-EVT-009": {
+      "name": "TIMESTAMP_OUT_OF_RANGE",
+      "http": 400,
+      "retryable": false,
+      "fix_owner": "integrator",
+      "message": "Event timestamp is in the future or beyond the accepted backfill horizon.",
+      "doc": "/docs/v1/errors#np-evt-009"
+    },
+    "TF-CFG-001": {
+      "name": "PARAMETER_OVERLAP",
+      "http": 409,
+      "retryable": false,
+      "fix_owner": "config_owner",
+      "message": "Effective-date range overlaps an existing parameter version (BR: overlap-free windows).",
+      "doc": "/docs/v1/errors#np-cfg-001"
+    },
+    "TF-CFG-002": {
+      "name": "ROLE_DENIED",
+      "http": 403,
+      "retryable": false,
+      "fix_owner": "config_owner",
+      "message": "Caller lacks the required role (e.g., FINANCE_PARAMS for parameter writes).",
+      "doc": "/docs/v1/errors#np-cfg-002"
+    },
+    "TF-CFG-003": {
+      "name": "DEPLOYMENT_EXISTS",
+      "http": 409,
+      "retryable": false,
+      "fix_owner": "integrator",
+      "message": "Deployment with this external reference already registered.",
+      "doc": "/docs/v1/errors#np-cfg-003"
+    },
+    "TF-CFG-004": {
+      "name": "NAMESPACE_CONFLICT",
+      "http": 409,
+      "retryable": false,
+      "fix_owner": "config_owner",
+      "message": "Id-namespace mapping conflicts with an existing mapping.",
+      "doc": "/docs/v1/errors#np-cfg-004"
+    },
+    "TF-CFG-005": {
+      "name": "WEBHOOK_UNREACHABLE",
+      "http": 422,
+      "retryable": true,
+      "fix_owner": "integrator",
+      "message": "Webhook endpoint failed verification challenge.",
+      "doc": "/docs/v1/errors#np-cfg-005"
+    },
+    "TF-READ-001": {
+      "name": "FIGURE_NOT_FOUND",
+      "http": 404,
+      "retryable": false,
+      "fix_owner": "integrator",
+      "message": "No figure with this id/period for the deployment.",
+      "doc": "/docs/v1/errors#np-read-001"
+    },
+    "TF-READ-002": {
+      "name": "PERIOD_NOT_COMPUTED",
+      "http": 200,
+      "retryable": false,
+      "fix_owner": "none",
+      "message": "Requested period has no finalized computation yet. Response includes next_compute_at. Not a failure.",
+      "doc": "/docs/v1/errors#np-read-002"
+    },
+    "TF-READ-003": {
+      "name": "COHORT_NOT_DISCLOSABLE",
+      "http": 200,
+      "retryable": false,
+      "fix_owner": "none",
+      "message": "Benchmark cohort below k_disclose. Response states threshold status (BR-014). Not a failure.",
+      "doc": "/docs/v1/errors#np-read-003"
+    },
+    "TF-AUTH-001": {
+      "name": "INVALID_API_KEY",
+      "http": 401,
+      "retryable": false,
+      "fix_owner": "integrator",
+      "message": "API key missing, malformed, or revoked.",
+      "doc": "/docs/v1/errors#np-auth-001"
+    },
+    "TF-AUTH-002": {
+      "name": "KEY_SCOPE_EXCEEDED",
+      "http": 403,
+      "retryable": false,
+      "fix_owner": "config_owner",
+      "message": "Key is not scoped to this deployment or plane.",
+      "doc": "/docs/v1/errors#np-auth-002"
+    },
+    "TF-AUTH-003": {
+      "name": "TEST_KEY_IN_PRODUCTION",
+      "http": 403,
+      "retryable": false,
+      "fix_owner": "integrator",
+      "message": "Test-scoped key used against production mode.",
+      "doc": "/docs/v1/errors#np-auth-003"
+    },
+    "TF-RATE-001": {
+      "name": "RATE_LIMITED",
+      "http": 429,
+      "retryable": true,
+      "fix_owner": "integrator",
+      "message": "Per-tenant rate limit exceeded. Honor retry_after; client buffering + idempotent replay is the designed behavior.",
+      "doc": "/docs/v1/errors#np-rate-001"
+    },
+    "TF-RATE-002": {
+      "name": "QUOTA_EXCEEDED",
+      "http": 429,
+      "retryable": false,
+      "fix_owner": "config_owner",
+      "message": "Plan-level event quota exhausted for the period.",
+      "doc": "/docs/v1/errors#np-rate-002"
+    },
+    "TF-SRV-001": {
+      "name": "INTERNAL",
+      "http": 500,
+      "retryable": true,
+      "fix_owner": "platform",
+      "message": "Platform-side failure. Retry with backoff; report request_id if persistent.",
+      "doc": "/docs/v1/errors#np-srv-001"
+    },
+    "TF-SRV-002": {
+      "name": "INGESTION_PAUSED",
+      "http": 503,
+      "retryable": true,
+      "fix_owner": "platform",
+      "message": "Ingestion temporarily paused (correctness over liveness, e.g., checkpoint store unavailable). Buffer and replay.",
+      "doc": "/docs/v1/errors#np-srv-002"
+    },
+    "TF-CFG-006": {
+      "name": "IMMUTABLE_FIELD",
+      "http": 409,
+      "retryable": false,
+      "fix_owner": "integrator",
+      "message": "Field cannot change after events exist for the deployment (e.g., type). Register a new deployment instead.",
+      "doc": "/docs/v1/errors#np-cfg-006"
+    },
+    "TF-CFG-007": {
+      "name": "MALFORMED_FIELD",
+      "http": 400,
+      "retryable": false,
+      "fix_owner": "integrator",
+      "message": "Config-plane body field failed validation. See field_path, expected, received.",
+      "doc": "/docs/v1/errors#np-cfg-007"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+
+== db reset + migrations ==
+applied supabase/migrations/0001_certified_schema.sql
+applied supabase/migrations/0002_postgrest_lockdown.sql
+applied supabase/migrations/0003_storage_buckets.sql
+
+== verification battery (7/7 PASS required) ==
+           check_name           |                                 result                                  
+--------------------------------+-------------------------------------------------------------------------
+ A_enum_column_match_rule       | PASS
+ B_all_enum_values_lowercase    | PASS
+ C_table_descriptions_31        | PASS
+ D_audit_columns_every_table    | PASS
+ E_updated_dt_trigger_31        | PASS
+ F_constraint_naming_convention | PASS
+ G_fk_orphan_id_columns         | PASS (figures.method_id: documented deliberate TEXT registry reference)
+(7 rows)
+battery 7/7 PASS
+
+== attack tests (cross-tenant / duplicate / phantom-parameter must all block) ==
+3/3 attacks blocked
+
+== PostgREST lockdown (anon must be denied on all public tables) ==
+psql:/tmp/ci_sql.sql:41: NOTICE:  PostgREST lockdown verified: anon denied on all 31 public tables
+lockdown verified
+
+== zero-stub grep on src/ ==
+PENDING (P1): src/ has no server code yet
+
+== ruff ==
+PENDING (P1): no src/ to lint
+
+== mypy --strict ==
+PENDING (P1): no src/ to type-check
+
+== python client tests (19 must stay green) ==
+...................                                                      [100%]
+19 passed in 0.05s
+client tests green
+
+== server tests + coverage >= 90% ==
+PENDING (P1-P8): server + conformance suite not built (blocked on SDK Spec + Use-Case Spec)
+
+== use-case conformance matrix (42/42) ==
+PENDING (P8): conformance matrix not built (needs TrueFigure_Use_Case_Specification)
+
+== RESULT ==
+ci.sh: all IMPLEMENTED gates GREEN (pending gates listed above are unbuilt phases)
