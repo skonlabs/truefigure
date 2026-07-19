@@ -1,0 +1,149 @@
+
+== db reset + migrations ==
+applied supabase/migrations/0001_certified_schema.sql
+applied supabase/migrations/0002_postgrest_lockdown.sql
+applied supabase/migrations/0003_storage_buckets.sql
+
+== verification battery (7/7 PASS required) ==
+           check_name           |                                 result                                  
+--------------------------------+-------------------------------------------------------------------------
+ A_enum_column_match_rule       | PASS
+ B_all_enum_values_lowercase    | PASS
+ C_table_descriptions_31        | PASS
+ D_audit_columns_every_table    | PASS
+ E_updated_dt_trigger_31        | PASS
+ F_constraint_naming_convention | PASS
+ G_fk_orphan_id_columns         | PASS (figures.method_id: documented deliberate TEXT registry reference)
+(7 rows)
+battery 7/7 PASS
+
+== attack tests (cross-tenant / duplicate / phantom-parameter must all block) ==
+3/3 attacks blocked
+
+== PostgREST lockdown (anon must be denied on all public tables) ==
+psql:/tmp/ci_sql.sql:41: NOTICE:  PostgREST lockdown verified: anon denied on all 31 public tables
+lockdown verified
+
+== zero-stub grep on src/ ==
+no stub markers in src/
+
+== ruff ==
+All checks passed!
+ruff clean
+
+== mypy --strict ==
+Success: no issues found in 23 source files
+mypy clean
+
+== python client tests (19 must stay green) ==
+..........................                                               [100%]
+=============================== warnings summary ===============================
+../../../../root/.local/share/uv/tools/pytest/lib/python3.11/site-packages/_pytest/config/__init__.py:1428
+  /root/.local/share/uv/tools/pytest/lib/python3.11/site-packages/_pytest/config/__init__.py:1428: PytestConfigWarning: Unknown config option: asyncio_mode
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+client tests green
+
+== server tests + coverage >= 90% ==
+........................................................................ [ 28%]
+........................................................................ [ 56%]
+........................................................................ [ 84%]
+.......................................                                  [100%]
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.11.15-final-0 _______________
+
+Name                                      Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------
+src/truefigure_sdk/__init__.py                2      0   100%
+src/truefigure_sdk/app.py                    47      5    89%   24-25, 75-82
+src/truefigure_sdk/auth.py                   55      1    98%   69
+src/truefigure_sdk/config.py                 23      3    87%   24, 30, 39
+src/truefigure_sdk/config_plane.py          339      5    99%   158-159, 250-251, 536
+src/truefigure_sdk/db.py                     41      0   100%
+src/truefigure_sdk/engine.py                186      8    96%   98, 126-127, 131, 166-167, 193, 261
+src/truefigure_sdk/envelope.py               18      0   100%
+src/truefigure_sdk/errors.py                 26      0   100%
+src/truefigure_sdk/eventkey.py               41      0   100%
+src/truefigure_sdk/http.py                   23      0   100%
+src/truefigure_sdk/imports.py                87      2    98%   88, 105
+src/truefigure_sdk/ingest.py                170      3    98%   136, 173, 239
+src/truefigure_sdk/periods.py                24      0   100%
+src/truefigure_sdk/pipeline.py              101      3    97%   68, 141, 143
+src/truefigure_sdk/ratelimit.py              26      1    96%   60
+src/truefigure_sdk/read_plane.py            175     13    93%   30, 95, 129, 161-164, 186-189, 196-197, 319
+src/truefigure_sdk/refs.py                   16      0   100%
+src/truefigure_sdk/registry.py               24      1    96%   24
+src/truefigure_sdk/secretbox.py              27      1    96%   45
+src/truefigure_sdk/storage.py                30      0   100%
+src/truefigure_sdk/webhooks_delivery.py      84      1    99%   182
+src/truefigure_sdk/wire.py                   26      0   100%
+-----------------------------------------------------------------------
+TOTAL                                      1591     47    97%
+Required test coverage of 90% reached. Total coverage: 97.05%
+255 passed in 126.08s (0:02:06)
+server tests + coverage >= 90%
+
+== use-case conformance matrix (42/42) ==
+============================================================
+USE-CASE CONFORMANCE MATRIX
+============================================================
+  UC-ONB-01    test_uc_onb_01     PASS
+  UC-ONB-02    test_uc_onb_02     PASS
+  UC-ONB-03    test_uc_onb_03     PASS
+  UC-ONB-04    test_uc_onb_04     PASS
+  UC-ACQ-01    test_uc_acq_01     PASS
+  UC-ACQ-02    test_uc_acq_02     PASS
+  UC-ACQ-03    test_uc_acq_03     PASS
+  UC-ACQ-04    test_uc_acq_04     PASS
+  UC-ACQ-05    test_uc_acq_05     PASS
+  UC-ACQ-06    test_uc_acq_06     PASS
+  UC-ACQ-07    test_uc_acq_07     PASS
+  UC-ACQ-08    test_uc_acq_08     PASS
+  UC-ACQ-09    test_uc_acq_09     PASS
+  UC-IDQ-01    test_uc_idq_01     PASS
+  UC-IDQ-02    test_uc_idq_02     PASS
+  UC-IDQ-03    test_uc_idq_03     PASS
+  UC-MEA-01    test_uc_mea_01     PASS
+  UC-MEA-02    test_uc_mea_02     PASS
+  UC-MEA-03    test_uc_mea_03     PASS
+  UC-MEA-04    test_uc_mea_04     PASS
+  UC-MEA-05    test_uc_mea_05     PASS
+  UC-REP-01    test_uc_rep_01     PASS
+  UC-REP-02    test_uc_rep_02     PASS
+  UC-REP-03    test_uc_rep_03     PASS
+  UC-REP-04    test_uc_rep_04     PASS
+  UC-FIN-01    test_uc_fin_01     PASS
+  UC-FIN-02    test_uc_fin_02     PASS
+  UC-FIN-03    test_uc_fin_03     PASS
+  UC-FIN-04    test_uc_fin_04     PASS
+  UC-FIN-05    test_uc_fin_05     PASS
+  UC-PIL-01    test_uc_pil_01     PASS
+  UC-PIL-02    test_uc_pil_02     PASS
+  UC-PIL-03    test_uc_pil_03     PASS
+  UC-PIL-04    test_uc_pil_04     PASS
+  UC-GOV-01    test_uc_gov_01     PASS
+  UC-GOV-02    test_uc_gov_02     PASS
+  UC-GOV-03    test_uc_gov_03     PASS
+  UC-GOV-04    test_uc_gov_04     PASS
+  UC-GOV-05    test_uc_gov_05     PASS
+  UC-ECO-01    test_uc_eco_01     PASS
+  UC-ECO-02    test_uc_eco_02     PASS
+  UC-ECO-03    test_uc_eco_03     PASS
+  UC-ECO-04    test_uc_eco_04     PASS
+  UC-ECO-05    test_uc_eco_05     PASS
+  UC-ECO-06    test_uc_eco_06     PASS
+  UC-BEN-01    test_uc_ben_01     PASS
+  UC-BEN-02    test_uc_ben_02     PASS
+  UC-WFP-01    test_uc_wfp_01     PASS
+  UC-WFP-02    test_uc_wfp_02     PASS
+  UC-DEP-01    test_uc_dep_01     PASS
+------------------------------------------------------------
+  50/50 use cases PASSING
+============================================================
+CONFORMANCE 50/50 — all use cases pass.
+50/50 conformance
+
+== RESULT ==
+ci.sh: ALL GATES GREEN — battery 7/7, attacks blocked, lockdown, ruff, mypy --strict, tests+coverage>=90%, conformance 50/50

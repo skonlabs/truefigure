@@ -197,18 +197,23 @@ class TrueFigureClient:
         if service_user_refs: body["service_user_refs"] = service_user_refs
         return self._request("POST", "/v1/deployments", body)["data"]
 
-    def create_parameter_version(self, parameters: dict, effective_from: str) -> dict:
+    def create_parameter_version(self, parameters: dict, effective_from: str,
+                                 currency: str = "USD") -> dict:
+        # Server/Data-Dictionary field name is `payload` (see discrepancy D5).
         return self._request("POST", "/v1/parameters",
-                             {"parameters": parameters, "effective_from": effective_from})["data"]
+                             {"payload": parameters, "effective_from": effective_from,
+                              "currency": currency})["data"]
 
     def whoami(self) -> dict:
         """Key self-check: workspace, environment, mode, scope, roles, rate limits (C-startup)."""
         return self._request("GET", "/v1/whoami")["data"]
 
     def declare_change_event(self, type: str, occurred_at: str, sidedness: str,
-                             description: str, scope_deployments: Optional[list] = None) -> dict:
+                             description: str, deployment_refs: Optional[list] = None,
+                             supersedes: Optional[str] = None) -> dict:
         body = {"type": type, "occurred_at": occurred_at, "sidedness": sidedness, "description": description}
-        if scope_deployments: body["scope_deployments"] = scope_deployments
+        if deployment_refs: body["deployment_refs"] = deployment_refs
+        if supersedes: body["supersedes"] = supersedes
         return self._request("POST", "/v1/change-events", body)["data"]
 
     def create_import(self, kind: str, expected_events: Optional[int] = None) -> dict:
@@ -233,6 +238,108 @@ class TrueFigureClient:
 
     def figure_lineage(self, figure_id: str, deployment_id: Optional[str] = None) -> dict:
         return self._request("GET", f"/v1/figures/{self._dep(deployment_id)}/{figure_id}/lineage")["data"]
+
+    # ---------------- config plane (full endpoint coverage) ----------------
+    def list_deployments(self) -> dict:
+        return self._request("GET", "/v1/deployments")["data"]
+
+    def get_deployment(self, deployment_id: Optional[str] = None) -> dict:
+        return self._request("GET", f"/v1/deployments/{self._dep(deployment_id)}")["data"]
+
+    def update_deployment(self, deployment_id: Optional[str] = None, *, name: Optional[str] = None,
+                          planned_rollout_at: Optional[str] = None) -> dict:
+        body: dict = {}
+        if name is not None:
+            body["name"] = name
+        if planned_rollout_at is not None:
+            body["planned_rollout_at"] = planned_rollout_at
+        return self._request("PATCH", f"/v1/deployments/{self._dep(deployment_id)}", body)["data"]
+
+    def upsert_roster(self, users: list[dict]) -> dict:
+        return self._request("POST", "/v1/roster:batch", {"users": users})["data"]
+
+    def list_roster(self, status: Optional[str] = None, kind: Optional[str] = None) -> dict:
+        q = "&".join(f"{k}={v}" for k, v in (("status", status), ("kind", kind)) if v)
+        return self._request("GET", "/v1/roster" + (f"?{q}" if q else ""))["data"]
+
+    def declare_license(self, seats_paid: int, valid_from: str, *, price_per_seat: Optional[float] = None,
+                        period_unit: str = "year", currency: str = "USD",
+                        licensed_user_refs: Optional[list] = None, deployment_id: Optional[str] = None) -> dict:
+        body: dict = {"seats_paid": seats_paid, "valid_from": valid_from, "period_unit": period_unit,
+                      "currency": currency}
+        if price_per_seat is not None:
+            body["price_per_seat"] = price_per_seat
+        if licensed_user_refs:
+            body["licensed_user_refs"] = licensed_user_refs
+        return self._request("PUT", f"/v1/deployments/{self._dep(deployment_id)}/license", body)["data"]
+
+    def get_license(self, deployment_id: Optional[str] = None) -> dict:
+        return self._request("GET", f"/v1/deployments/{self._dep(deployment_id)}/license")["data"]
+
+    def register_id_namespace(self, field: str, namespace: str, *, deployment_id: Optional[str] = None,
+                              source_ref: str = "", format_regex: Optional[str] = None,
+                              description: Optional[str] = None) -> dict:
+        body: dict = {"field": field, "namespace": namespace, "source_ref": source_ref}
+        if deployment_id:
+            body["deployment_id"] = deployment_id
+        if format_regex:
+            body["format_regex"] = format_regex
+        if description:
+            body["description"] = description
+        return self._request("POST", "/v1/id-namespaces", body)["data"]
+
+    def list_id_namespaces(self) -> dict:
+        return self._request("GET", "/v1/id-namespaces")["data"]
+
+    def list_parameters(self) -> dict:
+        return self._request("GET", "/v1/parameters")["data"]
+
+    def get_parameter_version(self, version: int) -> dict:
+        return self._request("GET", f"/v1/parameters/{version}")["data"]
+
+    def register_label_schema(self, label_schema_ref: str, name: str, label_values: list[str], *,
+                              applies_to_category: Optional[str] = None,
+                              min_samples_for_calibration: int = 200) -> dict:
+        body: dict = {"label_schema_ref": label_schema_ref, "name": name, "label_values": label_values,
+                      "min_samples_for_calibration": min_samples_for_calibration}
+        if applies_to_category:
+            body["applies_to_category"] = applies_to_category
+        return self._request("POST", "/v1/qa-labels/schemas", body)["data"]
+
+    def list_label_schemas(self) -> dict:
+        return self._request("GET", "/v1/qa-labels/schemas")["data"]
+
+    def create_webhook(self, url: str, events: list[str], secret: str) -> dict:
+        return self._request("POST", "/v1/webhooks", {"url": url, "events": events, "secret": secret})["data"]
+
+    def list_webhooks(self) -> dict:
+        return self._request("GET", "/v1/webhooks")["data"]
+
+    def delete_webhook(self, webhook_id: str) -> dict:
+        return self._request("DELETE", f"/v1/webhooks/{webhook_id}")["data"]
+
+    def webhook_deliveries(self, webhook_id: str) -> dict:
+        return self._request("GET", f"/v1/webhooks/{webhook_id}/deliveries")["data"]
+
+    def create_mapping_contract(self, source_ref: str, event_type: str, version: int, field_map: dict,
+                                notes: Optional[str] = None) -> dict:
+        body: dict = {"source_ref": source_ref, "event_type": event_type, "version": version,
+                      "field_map": field_map}
+        if notes:
+            body["notes"] = notes
+        return self._request("POST", "/v1/mapping-contracts", body)["data"]
+
+    def list_mapping_contracts(self) -> dict:
+        return self._request("GET", "/v1/mapping-contracts")["data"]
+
+    def list_change_events(self) -> dict:
+        return self._request("GET", "/v1/change-events")["data"]
+
+    def get_figure(self, figure_id: str, deployment_id: Optional[str] = None) -> dict:
+        return self._request("GET", f"/v1/figures/{self._dep(deployment_id)}/{figure_id}")["data"]
+
+    def get_report(self, report_id: str, deployment_id: Optional[str] = None) -> dict:
+        return self._request("GET", f"/v1/reports/{self._dep(deployment_id)}/{report_id}")["data"]
 
     # ---------------- transport with contract-driven retry ----------------
     def _request(self, method: str, path: str, body: Optional[dict] = None,

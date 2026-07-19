@@ -25,12 +25,36 @@ conformance matrix will cover **all 50** documented UCs. 50/50 PASSING satisfies
 Impact: **P0–P3 complete and gated.** **P4–P7** buildable now. **P8** now unblocked
 (will target 50/50). `ci.sh` marks the P8 matrix PENDING until it is built.
 
-## Machine-artifact vs prose disagreements found so far
+## Machine-artifact vs prose disagreements found
 | # | Where | Says | Wins | Note |
 |---|-------|------|------|------|
 | D1 | `IMPLEMENTATION.md` line 11 | schema has "36 enums" | **35** (the certified `schema.sql` defines 35 `CREATE TYPE`) | Same finding as the schema-build discrepancy report; the live DB has 35. Prose is stale. |
 | D2 | `IMPLEMENTATION.md` line 10 | error codes are `NP-<plane>-<nnn>` | **`TF-<plane>-<nnn>`** (the actual `registry/error-codes.json` uses `TF-`; 26 codes) | Build-spec §1 and §4 also say `TF-`. `NP-` is stale prose. |
 | D3 | Build-spec §checksums (earlier schema task) | "36 enum types" | **35** | Carried forward; 31 tables & 377 columns match exactly, confirming 35 is correct. |
+| D5a | Reference client `create_parameter_version` | body field `parameters` | **`payload`** (Data Dictionary column name; the server contract) | The older client binding diverged from the built server; aligned the client to `payload`. |
+| D5b | Reference client `declare_change_event` | body field `scope_deployments` | **`deployment_refs`** (the server contract) | Same: aligned the client binding. |
+| D6 | openapi roster `kind` enum = `[person,…]` | wire value `person` | stored `user_type='user'` | A value rename atop the field rename `kind→user_type`; handled in `wire.py` and recorded when P2 landed. |
+
+## Wire shapes derived (not contradicted) where openapi is silent
+Most config-plane request bodies (roster, license, id-namespaces, parameters,
+qa-labels, webhooks, change-events, mapping-contracts) are not spelled out in
+`openapi.yaml` (only summaries). Their field shapes were derived from the Data
+Dictionary columns + the wire-name map + the SDK-spec §5 descriptions. These are
+derivations, not conflicts; they are the documented column/wire correspondence.
+
+## Final status — Definition of Done
+All build-spec §7 items hold simultaneously (verified by `./ci.sh`, exit 0):
+- battery 7/7, three attack tests raise, PostgREST lockdown proven per table
+- ruff clean, mypy --strict clean, zero-stub grep clean
+- 19 (+7 extended = 26) client tests green; 255 server tests; coverage ≥97%
+- conformance matrix **50/50** (covers the build-spec's 42 a fortiori)
+- every one of the 26 TF-* error codes produced by a test
+- every behavior-driving enum value exercised (figure statuses, all grades, all
+  webhook event types delivered, all import types, both origins, both modes)
+- all 29 openapi paths+verbs implemented and exercised
+- golden Integration-Playbook E2E passes deterministically
+- no key-minting / tenancy-creating HTTP route (asserted); no secrets in repo/logs
+- zero edits to `schema.sql`; zero invented error codes; zero renamed fields
 
 ## Environment notes (not contract discrepancies, but affect verification)
 - **Python 3.11** is what's installed here; the stack target is **3.12**. Code is
