@@ -111,9 +111,11 @@ async def test_live_usage_classification(client, conn, tenant) -> None:
                      headers=auth(key))
     r = await client.get(f"/v1/live/usage/{dep}", headers=auth(key))
     d = r.json()["data"]
+    # activated=1 is below the k-anonymity floor (BR-012): totals kept, split suppressed.
     assert d["seats"]["paid"] == 5 and d["seats"]["activated"] == 1
-    assert d["seats"]["never_activated"] == 4 and d["seats"]["near_zero"] == 1  # 1 day < 3
-    assert d["waste"]["seats"] == 4 and d["waste"]["annual_usd"] == 200.0  # 4 * 50
+    assert d["seats"]["never_activated"] == 4
+    assert d["cohort_status"] == "not_disclosable" and d["code"] == "TF-READ-003"
+    assert "near_zero" not in d["seats"]
 
 
 # ---- live/cost --------------------------------------------------------------

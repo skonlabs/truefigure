@@ -240,11 +240,15 @@ def compute_time_savings(cur: psycopg.Cursor[dict[str, Any]], workspace_id: int,
         (assisted if r["is_assisted"] else unassisted).append(float(r["hours"]))
     if not assisted or not unassisted:
         return None
+    import math
+
     a_mean = sum(assisted) / len(assisted)
     u_mean = sum(unassisted) / len(unassisted)
     effect = u_mean - a_mean  # hours saved per item
-    # Crude margin: half-range of the smaller group as a stand-in CI half-width.
-    margin = (max(assisted + unassisted) - min(assisted + unassisted)) / 2.0
+    # CI-like half-width: range shrunk by sqrt(n). More consistent samples tighten
+    # the margin, so a REFUSED claim can later become answerable (refusal.lifted).
+    n = len(assisted) + len(unassisted)
+    margin = (max(assisted + unassisted) - min(assisted + unassisted)) / (2.0 * math.sqrt(n))
     pv, payload = resolve_parameter_version(cur, workspace_id, period)
     if abs(effect) < margin:
         return _write_figure(cur, workspace_id, deployment_id, figure_ref=figure_ref, period=period,
@@ -267,8 +271,10 @@ def compute_time_savings(cur: psycopg.Cursor[dict[str, Any]], workspace_id: int,
                              missing_parameter="labor_rates.default", parameter_set_version=pv,
                              value_class="capacity", lineage={"effect_hours": round(effect, 4)})
     value = Decimal(str(round(effect * len(assisted) * float(rate), 6)))
+    # Thin data supports only a directional ESTIMATE; enough samples -> MEASURED.
+    grade = "measured" if (len(assisted) + len(unassisted)) >= 4 else "estimate"
     return _write_figure(cur, workspace_id, deployment_id, figure_ref=figure_ref, period=period,
-                         claim="time_savings", status="computed", grade="measured",
+                         claim="time_savings", status="computed", grade=grade,
                          value_class="capacity", value=value, parameter_set_version=pv,
                          change_treatment=treatment,
                          lineage={"assisted_n": len(assisted), "unassisted_n": len(unassisted),
@@ -299,10 +305,17 @@ def compute_deployment(workspace_id: int, deployment_id: int, period: str) -> li
 
 def _fire_figure_webhooks(workspace_id: int, deployment_id: int, refs_written: list[str], period: str) -> None:
     dep_ref = db.fetch_one("SELECT deployment_ref FROM deployments WHERE id=%s", (deployment_id,))
+    ref = dep_ref["deployment_ref"] if dep_ref else None
     for fr in refs_written:
         webhooks_delivery.emit(workspace_id, "figure.updated",
-                               {"figure_id": fr, "deployment_id": dep_ref["deployment_ref"] if dep_ref else None,
-                                "period": period})
+                               {"figure_id": fr, "deployment_id": ref, "period": period})
+        # refusal.lifted: a previously-refused figure that is now computed became answerable.
+        rows = db.fetch_all(
+            "SELECT figure_status FROM figures WHERE deployment_id=%s AND figure_ref=%s "
+            "ORDER BY version DESC LIMIT 2", (deployment_id, fr))
+        if len(rows) >= 2 and rows[0]["figure_status"] == "computed" and rows[1]["figure_status"] == "refused":
+            webhooks_delivery.emit(workspace_id, "refusal.lifted",
+                                   {"figure_id": fr, "deployment_id": ref, "period": period})
 
 
 # ---- report issuance --------------------------------------------------------

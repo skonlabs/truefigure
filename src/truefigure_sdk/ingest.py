@@ -144,6 +144,12 @@ async def ingest_events(request: Request, principal: Principal = Depends(require
     if len(events) > _MAX_BATCH:
         raise TFError("TF-EVT-007", detail=f"batch exceeds {_MAX_BATCH} events")
 
+    # Per-tenant rate limit + plan quota (batch-level, 429).
+    from . import ratelimit
+    ws = db.fetch_one("SELECT rate_limit_rpm FROM workspaces WHERE id=%s", (principal.workspace_id,))
+    ratelimit.check_rate(principal.workspace_id, int(ws["rate_limit_rpm"]) if ws else 600)
+    ratelimit.check_quota(principal.workspace_id)
+
     source_ref = request.headers.get("X-TrueFigure-Source", "") or ""
     horizon = _backfill_horizon(principal.workspace_id)
 
@@ -189,7 +195,7 @@ def _process_one(
             )
             if cur.fetchone() is not None:
                 # Duplicate is an HTTP-successful no-op counted as a duplicate (TF-EVT-005).
-                return {"index": index, "status": "duplicate", "event_key": key}
+                return {"index": index, "status": "duplicate", "event_key": key, "code": "TF-EVT-005"}
             cur.execute(
                 """INSERT INTO events (workspace_id, deployment_id, event_type, origin_type,
                        pipeline_status, event_key, schema_version, occurred_at, source_ref, payload,
@@ -215,13 +221,16 @@ def _process_one(
 
 def _resolve_dep(cur: psycopg.Cursor[dict[str, Any]], principal: Principal, wire_id: Any) -> dict[str, Any]:
     cur.execute(
-        "SELECT id, workspace_id FROM deployments WHERE deployment_ref=%s AND workspace_id=%s",
+        "SELECT id, workspace_id, deployment_status FROM deployments WHERE deployment_ref=%s AND workspace_id=%s",
         (wire_id, principal.workspace_id),
     )
     row = cur.fetchone()
     if row is None:
         raise _Reject("TF-EVT-002", field_path="deployment_id", reason=f"unknown deployment {wire_id}")
     principal.require_deployment(int(row["id"]))
+    if row["deployment_status"] == "paused":
+        # Ingestion is temporarily paused for this deployment (resume intended).
+        raise TFError("TF-SRV-002", detail=f"ingestion paused for {wire_id}")
     return row
 
 

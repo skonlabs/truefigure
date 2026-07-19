@@ -36,9 +36,10 @@ async def test_deployment_external_ref_idempotent(client, tenant) -> None:
     r2 = await client.post("/v1/deployments",
                            json={"name": "Claims AI", "type": "saas_tool", "external_ref": "ext-1"},
                            headers=auth(tenant["key"]))
-    assert r2.status_code == 200
-    assert r2.json()["data"]["deployment_id"] == d1
-    assert r2.json()["data"]["idempotent"] is True
+    # Repeat POST is "already applied" -> TF-CFG-003, existing id in detail.
+    assert r2.status_code == 409
+    assert r2.json()["errors"][0]["code"] == "TF-CFG-003"
+    assert d1 in r2.json()["errors"][0]["detail"]
 
 
 async def test_deployment_type_immutable_with_events(client, conn, tenant) -> None:

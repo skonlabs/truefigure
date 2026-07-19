@@ -83,6 +83,10 @@ def _clean() -> Iterator[None]:
         names = ", ".join(f'public."{r[0]}"' for r in rows)
         c.execute(f"TRUNCATE {names} RESTART IDENTITY CASCADE")
         c.execute(_SEED_USER)
+    # Reset in-process rate-limiter state so per-test counters don't leak.
+    from truefigure_sdk import ratelimit
+
+    ratelimit.reset()
     yield
 
 

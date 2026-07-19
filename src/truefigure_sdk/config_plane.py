@@ -61,7 +61,8 @@ async def register_deployment(request: Request, principal: Principal = Depends(r
     body = parse_body(DeploymentCreate, await request.json())
     mode = "planned" if body.planned_rollout_at else "measured"
     with db.transaction() as cur:
-        # Idempotency by external_ref (TF-CFG-003 = already applied -> return existing).
+        # Idempotency by external_ref: a repeat POST is "already applied" (TF-CFG-003).
+        # The existing deployment_id travels in detail so clients treat it as success.
         if body.external_ref:
             cur.execute(
                 "SELECT deployment_ref FROM deployments WHERE workspace_id=%s AND external_ref=%s",
@@ -69,7 +70,8 @@ async def register_deployment(request: Request, principal: Principal = Depends(r
             )
             existing = cur.fetchone()
             if existing:
-                return ok(request, {"deployment_id": existing["deployment_ref"], "idempotent": True}, status=200)
+                raise TFError("TF-CFG-003", field_path="external_ref",
+                              detail=f"already applied: {existing['deployment_ref']}")
 
         dep_ref = refs.new_ref("deployment")
         cur.execute(

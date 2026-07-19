@@ -187,4 +187,5 @@ def verify_webhook(webhook_ref: str, workspace_id: int, sender: Sender) -> bool:
             cur.execute("UPDATE webhooks SET webhook_status='verified', updated_by=%s WHERE id=%s",
                         (SYSTEM_USER_ID, row["id"]))
         return True
-    return False
+    # Challenge failed: the endpoint is unreachable / did not echo (TF-CFG-005).
+    raise TFError("TF-CFG-005", detail=f"webhook {webhook_ref} failed verification challenge (status {status})")

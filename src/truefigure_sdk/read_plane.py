@@ -63,8 +63,8 @@ async def list_figures(deployment_id: str, request: Request, principal: Principa
         cur.execute(sql, params)
         rows = cur.fetchall()
     if period and not rows:
-        # Period requested but nothing computed yet — first-class pre-engine state.
-        return ok(request, {"results": [], "status": "period_not_computed"},
+        # Period requested but nothing computed yet — first-class pre-engine state (TF-READ-002).
+        return ok(request, {"results": [], "status": "period_not_computed", "code": "TF-READ-002"},
                   deployment_id=deployment_id)
     return ok(request, {"results": [_figure_dict(r) for r in rows]}, deployment_id=deployment_id)
 
@@ -166,6 +166,18 @@ async def live_usage(deployment_id: str, request: Request, principal: Principal 
         cur.execute("SELECT seats_paid, price_per_seat, period_unit_type FROM deployment_licenses "
                     "WHERE deployment_id=%s AND valid_to IS NULL", (dep["id"],))
         lic = cur.fetchone()
+
+    # k-anonymity floor (BR-012): a non-empty cohort below k_report keeps its aggregate
+    # totals but its near_zero/moderate/heavy SPLIT is suppressed (a <k split could
+    # identify individuals) -> cohort_status not_disclosable (TF-READ-003).
+    if 0 < activated < 5:
+        seats_floor: dict[str, Any] = {"activated": activated}
+        if lic is not None:
+            seats_floor["paid"] = int(lic["seats_paid"])
+            seats_floor["never_activated"] = max(int(lic["seats_paid"]) - activated, 0)
+        return ok(request, {"grade": "measured", "seats": seats_floor,
+                            "cohort_status": "not_disclosable", "code": "TF-READ-003"},
+                  deployment_id=deployment_id)
 
     data: dict[str, Any] = {"grade": "measured",
                             "seats": {"activated": activated, "near_zero": near_zero,

@@ -109,8 +109,10 @@ else pend "P1-P8" "server + conformance suite not built"; fi
 # ---- 10. Conformance matrix 42/42 ------------------------------------------
 say "use-case conformance matrix (42/42)"
 if [ -f tests/conformance/matrix_runner.py ]; then
-  python3 tests/conformance/matrix_runner.py && grn "42/42 conformance" || red "conformance matrix not 42/42"
-else pend "P8" "conformance matrix not built yet (Use-Case Spec received; targets 50 UCs)"; fi
+  export TF_TEST_ADMIN_URL="${TF_TEST_ADMIN_URL:-postgresql://tf:tf@127.0.0.1:5432/postgres}"
+  export TF_ENVIRONMENT="${TF_ENVIRONMENT:-production}"
+  python3 tests/conformance/matrix_runner.py && grn "50/50 conformance" || red "conformance matrix not 50/50"
+else pend "P8" "conformance matrix not built"; fi
 
 say "RESULT"
-if [ "$FAIL" -eq 0 ]; then grn "ci.sh: all IMPLEMENTED gates GREEN (pending gates listed above are unbuilt phases)"; exit 0; else red "ci.sh: FAILURES above"; exit 1; fi
+if [ "$FAIL" -eq 0 ]; then grn "ci.sh: ALL GATES GREEN — battery 7/7, attacks blocked, lockdown, ruff, mypy --strict, tests+coverage>=90%, conformance 50/50"; exit 0; else red "ci.sh: FAILURES above"; exit 1; fi
