@@ -42,6 +42,22 @@ qa-labels, webhooks, change-events, mapping-contracts) are not spelled out in
 Dictionary columns + the wire-name map + the SDK-spec §5 descriptions. These are
 derivations, not conflicts; they are the documented column/wire correspondence.
 
+## SDK architecture (post-review)
+Per the reference layering, logic is separated by responsibility (see
+`docs/architecture.md`):
+- **SDK (Python only)** carries client-side CONVENIENCE: request construction,
+  public-contract validation, local `event_key`, retries/backoff, timeouts,
+  cursor pagination, NDJSON file upload, async import polling, error mapping,
+  webhook signature verification, `provision()` workflow, typed results.
+- **Server** is split into `api/` (routes, request/response models, application
+  services), `domain/` (engine, entities, policies — the core intelligence), and
+  `platform/` (database, storage, billing, config, security).
+- Server is AUTHORITATIVE: it re-validates, re-canonicalizes, recomputes the key,
+  deduplicates, and measures. The measurement engine/pricing/thresholds live only
+  in `domain/` and never ship in the SDK (grep-guarded in `ci.sh`).
+- `domain/` and `platform/` never import `api/` (layering guard in `ci.sh`).
+- Node/React SDKs were removed; Python is the single supported SDK.
+
 ## Final status — Definition of Done
 All build-spec §7 items hold simultaneously (verified by `./ci.sh`, exit 0):
 - battery 7/7, three attack tests raise, PostgREST lockdown proven per table

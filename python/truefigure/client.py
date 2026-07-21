@@ -1,15 +1,10 @@
-"""TrueFigureClient: thin transport client.
+"""TrueFigureClient: thin reference client.
 
-Design rules (thin by construction — zero proprietary/core logic):
-- Transport only: typed 1:1 endpoint bindings + batching + retry/backoff +
-  offline buffering + JSON envelope parsing + typed error mapping.
-- NO event_key computation, NO timestamp canonicalization, NO dedup-scope rules,
-  NO enum/business-rule validation, NO grade/margin/figure math. The server owns
-  all of that; the client sends raw envelopes and receives server-assigned
-  event_keys back in the batch result.
+Design rules (from the SDK specification):
+- Thin: typed bindings + batching + retry/backoff + offline buffering + transport. Zero business logic.
 - Every log line is structured JSON with request_id for client<->server correlation.
 - Retry is contract-driven: only errors with retryable=true (or HTTP 429/5xx) retry; backoff honors retry_after.
-- At-least-once delivery + server-side idempotency = exactly-once effect.
+- At-least-once delivery + server idempotency (natural keys) = exactly-once effect.
 - Test mode (parse-echo) is the same endpoint with a header, never a separate system.
 """
 from __future__ import annotations
@@ -19,6 +14,7 @@ import logging
 import time
 import urllib.request
 import urllib.error
+from urllib.parse import urlencode
 from typing import Callable, Optional
 
 from .errors import ErrorObject, TrueFigureError, RateLimited
@@ -89,8 +85,10 @@ class TrueFigureClient:
     def __init__(self, api_key: str, *, base_url: str = "https://api.truefigure.io",
                  deployment_id: Optional[str] = None, buffer_path: Optional[str] = None,
                  max_retries: int = 5, timeout: float = 10.0, source_ref: Optional[str] = None,
-                 transport: Optional[Callable[[str, str, dict, dict], tuple[int, dict, dict]]] = None):
-        """transport(method, url, headers, body_dict) -> (status, headers, body_dict); injectable for tests."""
+                 transport: Optional[Callable[[str, str, dict, dict], tuple[int, dict, dict]]] = None,
+                 uploader: Optional[Callable[[str, bytes], int]] = None):
+        """transport(method, url, headers, body_dict) -> (status, headers, body_dict); injectable for tests.
+        uploader(url, data_bytes) -> status; injectable PUT for signed storage uploads (tests)."""
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.deployment_id = deployment_id
@@ -100,29 +98,23 @@ class TrueFigureClient:
         self.buffer = OfflineBuffer(buffer_path) if buffer_path else None
         self._pending: list[dict] = []
         self._transport = transport or self._http
+        self._uploader = uploader
 
     # ---------------- event enqueue API ----------------
-    # track_* only SHAPE the public envelope and enqueue it. They return the
-    # queue position (a local handle); the authoritative server-assigned
-    # event_key arrives in BatchResult.results[*].event_key after flush().
-    def track_activity(self, **kw) -> int:
+    def track_activity(self, **kw) -> str:
         return self._enqueue(ev.activity(self._dep(kw.pop("deployment_id", None)), **kw))
 
-    def track_lifecycle(self, **kw) -> int:
+    def track_lifecycle(self, **kw) -> str:
         return self._enqueue(ev.lifecycle(self._dep(kw.pop("deployment_id", None)), **kw))
 
-    def track_cost(self, **kw) -> int:
+    def track_cost(self, **kw) -> str:
         return self._enqueue(ev.cost_meter(self._dep(kw.pop("deployment_id", None)), **kw))
 
-    def track_quality(self, **kw) -> int:
+    def track_quality(self, **kw) -> str:
         return self._enqueue(ev.quality_signal(self._dep(kw.pop("deployment_id", None)), **kw))
 
-    def track_revenue(self, **kw) -> int:
+    def track_revenue(self, **kw) -> str:
         return self._enqueue(ev.revenue_signal(self._dep(kw.pop("deployment_id", None)), **kw))
-
-    def track(self, envelope: dict) -> int:
-        """Enqueue a pre-shaped raw envelope (escape hatch for custom mappers)."""
-        return self._enqueue(dict(envelope))
 
     def _dep(self, override):
         d = override or self.deployment_id
@@ -130,12 +122,12 @@ class TrueFigureClient:
             raise ValueError("deployment_id required (constructor default or per-call)")
         return d
 
-    def _enqueue(self, envelope: dict) -> int:
+    def _enqueue(self, envelope: dict) -> str:
+        key = envelope["_event_key"]
         self._pending.append(envelope)
-        pos = len(self._pending)
         if len(self._pending) >= self.MAX_BATCH:
             self.flush()
-        return pos
+        return key
 
     # ---------------- flush / echo ----------------
     def flush(self, mode: str = "production") -> BatchResult:
@@ -147,8 +139,9 @@ class TrueFigureClient:
         results, req_id = [], ""
         for i in range(0, len(batch), self.MAX_BATCH):
             chunk = batch[i:i + self.MAX_BATCH]
+            wire = [{k: v for k, v in e.items() if k != "_event_key"} for e in chunk]
             try:
-                env = self._request("POST", "/v1/events:batch", {"events": chunk},
+                env = self._request("POST", "/v1/events:batch", {"events": wire},
                                     extra_headers={"X-TrueFigure-Mode": mode})
             except (TrueFigureError,) as err:
                 if self.buffer:
@@ -171,17 +164,14 @@ class TrueFigureClient:
         logger.info("flush complete: %r", br, extra={"request_id": req_id, "batch_size": len(batch)})
         return br
 
-    def ingest(self, envelopes: list[dict], mode: str = "production") -> BatchResult:
-        """Thin passthrough: POST a list of raw envelopes directly (server assigns keys)."""
-        env = self._request("POST", "/v1/events:batch", {"events": list(envelopes)},
-                            extra_headers={"X-TrueFigure-Mode": mode})
-        return BatchResult(env["data"]["results"], env["meta"]["request_id"])
-
     def echo(self, envelopes: Optional[list[dict]] = None) -> BatchResult:
         """Parse-echo test mode: same endpoint, header-switched; stores nothing server-side."""
         if envelopes is None:
             envelopes, self._pending = self._pending, []
-        return self.ingest(list(envelopes), mode="test")
+        wire = [{k: v for k, v in e.items() if k != "_event_key"} for e in envelopes]
+        env = self._request("POST", "/v1/events:batch", {"events": wire},
+                            extra_headers={"X-TrueFigure-Mode": "test"})
+        return BatchResult(env["data"]["results"], env["meta"]["request_id"])
 
     # ---------------- read plane ----------------
     def event_status(self, event_key: str) -> dict:
@@ -355,6 +345,88 @@ class TrueFigureClient:
     def get_report(self, report_id: str, deployment_id: Optional[str] = None) -> dict:
         return self._request("GET", f"/v1/reports/{self._dep(deployment_id)}/{report_id}")["data"]
 
+    # ---------------- pagination (cursor) ----------------
+    def paginate(self, path: str, params: Optional[dict] = None, *, items_key: str = "results"):
+        """Yield items across all pages, following meta.next_cursor (cursor pagination)."""
+        cursor: Optional[str] = None
+        while True:
+            q = dict(params or {})
+            if cursor:
+                q["cursor"] = cursor
+            qs = ("?" + urlencode(q)) if q else ""
+            env = self._request("GET", path + qs)
+            data = env.get("data")
+            items = data.get(items_key, []) if isinstance(data, dict) else (data or [])
+            for it in items:
+                yield it
+            cursor = (env.get("meta") or {}).get("next_cursor")
+            if not cursor:
+                break
+
+    def iter_roster(self, **filters):
+        return self.paginate("/v1/roster", filters or None)
+
+    def iter_deployments(self):
+        return self.paginate("/v1/deployments")
+
+    def iter_change_events(self):
+        return self.paginate("/v1/change-events")
+
+    # ---------------- async import: file upload + polling ----------------
+    IMPORT_TERMINAL = frozenset({"completed", "completed_with_rejects", "failed"})
+
+    def upload_import(self, events: list[dict], *, kind: str = "backfill",
+                      expected_events: Optional[int] = None, wait: bool = False,
+                      poll_interval: float = 2.0, timeout: float = 300.0) -> dict:
+        """Create an import job, upload the events as NDJSON to the signed URL, and
+        optionally poll to completion. Same envelopes/validators/dedup as :batch."""
+        created = self.create_import(kind, expected_events=expected_events if expected_events is not None else len(events))
+        import_id, upload_url = created["import_id"], created["upload_url"]
+        ndjson = "\n".join(
+            json.dumps({k: v for k, v in e.items() if k != "_event_key"}) for e in events
+        ).encode("utf-8")
+        self._upload(upload_url, ndjson)
+        logger.info("import uploaded: %d events", len(events),
+                    extra={"request_id": created.get("request_id"), "batch_size": len(events)})
+        if wait:
+            return self.wait_for_import(import_id, poll_interval=poll_interval, timeout=timeout)
+        return created
+
+    def wait_for_import(self, import_id: str, *, poll_interval: float = 2.0, timeout: float = 300.0) -> dict:
+        """Poll GET /v1/imports/{id} until the job reaches a terminal state (or timeout)."""
+        deadline = time.monotonic() + timeout
+        while True:
+            status = self.import_status(import_id)
+            if status.get("status") in self.IMPORT_TERMINAL:
+                return status
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"import {import_id} not terminal after {timeout}s (status={status.get('status')})")
+            time.sleep(poll_interval)
+
+    def _upload(self, url: str, data: bytes) -> int:
+        """PUT raw bytes to a signed storage URL. Injectable via the `uploader` ctor arg."""
+        if self._uploader is not None:
+            return self._uploader(url, data)
+        req = urllib.request.Request(url, data=data, method="PUT",
+                                     headers={"Content-Type": "application/x-ndjson"})
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            return resp.status
+
+    # ---------------- convenience workflow ----------------
+    def provision(self, *, name: str, type: str, license: Optional[dict] = None,
+                  parameters: Optional[dict] = None, effective_from: Optional[str] = None,
+                  **deploy_kw) -> dict:
+        """One-call bring-up: register a deployment, then (optionally) declare its
+        license and the workspace parameter version. Returns the deployment record."""
+        dep = self.register_deployment(name, type, **deploy_kw)
+        did = dep["deployment_id"]
+        if license:
+            self.declare_license(deployment_id=did, **license)
+        if parameters:
+            self.create_parameter_version(parameters, effective_from or "1970-01-01")
+        return dep
+
     # ---------------- transport with contract-driven retry ----------------
     def _request(self, method: str, path: str, body: Optional[dict] = None,
                  extra_headers: Optional[dict] = None) -> dict:
@@ -385,12 +457,11 @@ class TrueFigureClient:
                 raise RateLimited(errors, req_id)
             raise TrueFigureError(errors or [ErrorObject("TF-SRV-001", f"HTTP {status}", True, req_id)], req_id)
 
-    @staticmethod
-    def _http(method: str, url: str, headers: dict, body: dict) -> tuple[int, dict, dict]:
+    def _http(self, method: str, url: str, headers: dict, body: dict) -> tuple[int, dict, dict]:
         data = json.dumps(body).encode("utf-8") if method != "GET" else None
         req = urllib.request.Request(url, data=data, headers=headers, method=method)
         try:
-            with urllib.request.urlopen(req, timeout=10.0) as resp:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 return resp.status, dict(resp.headers), json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             try:

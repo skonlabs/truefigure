@@ -89,35 +89,28 @@ if [ -d src ] && [ -n "$(find src -name '*.py' 2>/dev/null)" ]; then python3 -m 
 say "mypy --strict"
 if [ -d src ] && [ -n "$(find src -name "*.py" 2>/dev/null)" ]; then python3 -m mypy --strict src/ && grn "mypy clean" || red "mypy failed"; else pend "P1" "no src/ to type-check"; fi
 
-# ---- 8. Thin SDK tests (python / node / react) -----------------------------
-# The shipped SDKs are THIN: transport + auth + envelope + retry + batching only.
-# No event_key, no timestamp canonicalization, no dedup-scope rules, no
-# enum/business validation, no grade/figure math. Proprietary logic stays on the
-# server. The zero-proprietary-logic guard below enforces this mechanically.
-say "no proprietary logic in shipped SDKs"
-if grep -RInE 'hashlib|sha256|canonical_ts|natural_key|_event_key' \
-     python/truefigure sdk/node/src sdk/react/src 2>/dev/null; then
-  red "proprietary/core logic leaked into an SDK (see matches above)"
-else grn "SDKs are thin (no key/canonicalization/business logic)"; fi
+# ---- 8. Python SDK (convenience client) + layering guards ------------------
+# The SDK carries client-side CONVENIENCE only (validation, retries, pagination,
+# file upload, polling, webhook verification, typed results, event_key for local
+# handles). The PROPRIETARY CORE — the measurement engine, grades, thresholds,
+# pricing — must live ONLY in the server domain layer, never in the SDK.
+say "no measurement/core logic in the SDK"
+if grep -RInE '_write_figure|compute_deployment|def _change_treatment|labor_rate|price_provenance' \
+     python/truefigure 2>/dev/null; then
+  red "measurement/core logic leaked into the SDK (see matches above)"
+else grn "SDK holds convenience only; measurement core stays server-side"; fi
 
-say "python client tests (thin)"
+# Enforce the api/domain/platform layering: the domain (core) must not import the
+# api layer, keeping the intelligence layer independent of transport/controllers.
+say "layering: domain must not depend on api"
+if grep -RInE 'from truefigure_sdk\.api|import truefigure_sdk\.api' src/truefigure_sdk/domain src/truefigure_sdk/platform 2>/dev/null; then
+  red "layering violation: domain/platform imports the api layer"
+else grn "domain/platform independent of api (clean layering)"; fi
+
+say "python SDK tests"
 if command -v pytest >/dev/null && [ -d python/tests ]; then
-  ( cd python && pytest -q tests/ ) && grn "python client tests green" || red "python client tests failed"
+  ( cd python && pytest -q tests/ ) && grn "python SDK tests green" || red "python SDK tests failed"
 else pend "P0" "pytest/client not available"; fi
-
-say "node + react SDK build & tests"
-if command -v node >/dev/null; then
-  ok_js=1
-  for pkg in sdk/node sdk/react; do
-    if [ -x "$pkg/node_modules/.bin/tsc" ]; then
-      ( cd "$pkg" && rm -rf dist && ./node_modules/.bin/tsc -p tsconfig.json \
-          && node --test test/*.test.mjs ) || ok_js=0
-    else
-      pend "SDK" "$pkg deps not installed (run npm install in $pkg)"; ok_js=0
-    fi
-  done
-  [ "$ok_js" = 1 ] && grn "node + react SDKs build and pass" || red "node/react SDK build or tests failed"
-else pend "SDK" "node not available"; fi
 
 # ---- 9. Server + conformance test suite ------------------------------------
 say "server tests + coverage >= 90%"

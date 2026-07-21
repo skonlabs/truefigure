@@ -346,7 +346,7 @@ def _add_src_path() -> None:
 
 def pipeline_run(a: argparse.Namespace) -> None:
     _add_src_path()
-    from truefigure_sdk import pipeline
+    from truefigure_sdk.domain.policies import pipeline
 
     counts = pipeline.run_pipeline(limit=a.limit)
     print("pipeline: " + ", ".join(f"{k}={v}" for k, v in counts.items()))
@@ -354,7 +354,7 @@ def pipeline_run(a: argparse.Namespace) -> None:
 
 def imports_run(a: argparse.Namespace) -> None:
     _add_src_path()
-    from truefigure_sdk import imports
+    from truefigure_sdk.api.routes import imports
 
     counts = imports.run_import(a.import_id)
     print("import " + a.import_id + ": " + ", ".join(f"{k}={v}" for k, v in counts.items()))
@@ -362,7 +362,7 @@ def imports_run(a: argparse.Namespace) -> None:
 
 def webhooks_deliver(a: argparse.Namespace) -> None:
     _add_src_path()
-    from truefigure_sdk import webhooks_delivery
+    from truefigure_sdk.domain.policies import webhooks_delivery
 
     counts = webhooks_delivery.deliver_once(webhooks_delivery._default_sender, limit=a.limit)
     print("deliveries: " + ", ".join(f"{k}={v}" for k, v in counts.items()))
@@ -376,7 +376,7 @@ def _resolve_dep_ids(deployment_ref: str) -> tuple[int, int]:
 
 def engine_run(a: argparse.Namespace) -> None:
     _add_src_path()
-    from truefigure_sdk import engine
+    from truefigure_sdk.domain import engine
 
     ws, dep = _resolve_dep_ids(a.deployment_ref)
     written = engine.compute_deployment(ws, dep, a.period)
@@ -385,7 +385,7 @@ def engine_run(a: argparse.Namespace) -> None:
 
 def report_issue(a: argparse.Namespace) -> None:
     _add_src_path()
-    from truefigure_sdk import engine
+    from truefigure_sdk.domain import engine
 
     ws, dep = _resolve_dep_ids(a.deployment_ref)
     ref = engine.issue_report(ws, dep, a.period)
@@ -394,7 +394,7 @@ def report_issue(a: argparse.Namespace) -> None:
 
 def monitors_run(a: argparse.Namespace) -> None:
     _add_src_path()
-    from truefigure_sdk import engine
+    from truefigure_sdk.domain import engine
 
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT id FROM workspaces WHERE workspace_ref=%s", (a.workspace_ref,))

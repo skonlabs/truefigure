@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import registry
+from truefigure_sdk.platform.config import registry
 
 
 class TFError(Exception):

@@ -10,17 +10,12 @@ from __future__ import annotations
 
 import json
 
-from _helpers import (
-    activity,
-    auth,
-    cost_meter,
-    lifecycle,
-    make_deployment,
-    post_events,
-    provision,
-)
+from _helpers import activity, auth, cost_meter, lifecycle, make_deployment, post_events, provision
 
-from truefigure_sdk import engine, imports, pipeline, storage
+from truefigure_sdk.domain import engine
+from truefigure_sdk.api.routes import imports
+from truefigure_sdk.domain.policies import pipeline
+from truefigure_sdk.platform.storage import storage
 
 PERIOD = "2026-07"
 

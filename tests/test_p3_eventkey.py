@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from truefigure_sdk import eventkey
+from truefigure_sdk.domain.entities import eventkey
 
 DEP = "dep_x"
 TS = "2026-07-01T09:14:00+01:00"  # offset form; canonicalizes to 08:14:00.000Z

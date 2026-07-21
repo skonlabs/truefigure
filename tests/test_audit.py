@@ -41,7 +41,7 @@ def _ids(conn, dep):
 def test_config_module_edges() -> None:
     import os
 
-    from truefigure_sdk import config
+    from truefigure_sdk.platform.config import config
 
     config.get_settings.cache_clear()
     s = config.get_settings()
@@ -71,7 +71,7 @@ async def test_auth_empty_bearer(client) -> None:
 async def test_generic_exception_handler_returns_srv001() -> None:
     from types import SimpleNamespace
 
-    from truefigure_sdk.app import handle_unexpected
+    from truefigure_sdk.api.app import handle_unexpected
 
     req = SimpleNamespace(state=SimpleNamespace(request_id="req_test"))
     resp = await handle_unexpected(req, RuntimeError("boom"))  # type: ignore[arg-type]
@@ -101,7 +101,8 @@ async def test_delete_webhook_not_found(client, tenant) -> None:
 
 # ---- engine branches ---------------------------------------------------------
 async def test_change_treatment_one_sided_adjusted(client, conn, tenant) -> None:
-    from truefigure_sdk import engine, pipeline
+    from truefigure_sdk.domain import engine
+    from truefigure_sdk.domain.policies import pipeline
     key = tenant["key"]
     dep = await _mkdep(client, key)
     await _post(client, key, [{"schema_version": "1.0", "deployment_id": dep, "event_type": "cost_meter",
@@ -121,7 +122,8 @@ async def test_change_treatment_one_sided_adjusted(client, conn, tenant) -> None
 
 
 async def test_cost_only_unpriced_meters_awaiting(client, conn, tenant) -> None:
-    from truefigure_sdk import engine, pipeline
+    from truefigure_sdk.domain import engine
+    from truefigure_sdk.domain.policies import pipeline
     key = tenant["key"]
     dep = await _mkdep(client, key)
     await _post(client, key, [{"schema_version": "1.0", "deployment_id": dep, "event_type": "cost_meter",
@@ -138,7 +140,8 @@ async def test_cost_only_unpriced_meters_awaiting(client, conn, tenant) -> None:
 
 
 async def test_seats_price_from_parameters_customer_entered(client, conn, tenant) -> None:
-    from truefigure_sdk import engine, pipeline
+    from truefigure_sdk.domain import engine
+    from truefigure_sdk.domain.policies import pipeline
     key = tenant["key"]
     dep = await _mkdep(client, key)
     await client.post("/v1/roster:batch", json={"users": [{"user_ref": "u1", "kind": "person"}]}, headers=auth(key))
@@ -156,7 +159,8 @@ async def test_seats_price_from_parameters_customer_entered(client, conn, tenant
 
 
 async def test_containment_none_when_no_agent_actions(client, conn, tenant) -> None:
-    from truefigure_sdk import engine, pipeline
+    from truefigure_sdk.domain import engine
+    from truefigure_sdk.domain.policies import pipeline
     key = tenant["key"]
     dep = await _mkdep(client, key, type="agent")
     await _post(client, key, [_act(dep, "u", "W", T1, action="suggestion_accepted")])  # not autonomous/escalated
@@ -168,7 +172,8 @@ async def test_containment_none_when_no_agent_actions(client, conn, tenant) -> N
 
 
 async def test_time_savings_measured_grade(client, conn, tenant) -> None:
-    from truefigure_sdk import engine, pipeline
+    from truefigure_sdk.domain import engine
+    from truefigure_sdk.domain.policies import pipeline
     key = tenant["key"]
     dep = await _mkdep(client, key)
     ev = []
@@ -195,7 +200,8 @@ async def test_time_savings_measured_grade(client, conn, tenant) -> None:
 
 # ---- imports edges -----------------------------------------------------------
 async def test_import_not_found_and_blank_lines(client, conn, tenant) -> None:
-    from truefigure_sdk import imports, storage
+    from truefigure_sdk.api.routes import imports
+    from truefigure_sdk.platform.storage import storage
     from truefigure_sdk.errors import TFError
     key = tenant["key"]
     with pytest.raises(TFError):
@@ -230,7 +236,7 @@ async def test_body_too_large_and_non_object_event(client, tenant) -> None:
 
 # ---- pipeline edges ----------------------------------------------------------
 async def test_pipeline_resolved_no_workitem(client, conn, tenant) -> None:
-    from truefigure_sdk import pipeline
+    from truefigure_sdk.domain.policies import pipeline
     key = tenant["key"]
     dep = await _mkdep(client, key)
     await client.post("/v1/roster:batch", json={"users": [{"user_ref": "u1", "kind": "person"}]}, headers=auth(key))
@@ -241,7 +247,7 @@ async def test_pipeline_resolved_no_workitem(client, conn, tenant) -> None:
 
 
 async def test_pipeline_blocked_user_excluded(client, conn, tenant) -> None:
-    from truefigure_sdk import pipeline
+    from truefigure_sdk.domain.policies import pipeline
     key = tenant["key"]
     dep = await _mkdep(client, key)
     await client.post("/v1/roster:batch", json={"users": [{"user_ref": "b1", "kind": "person"}]}, headers=auth(key))
@@ -253,7 +259,7 @@ async def test_pipeline_blocked_user_excluded(client, conn, tenant) -> None:
 
 
 async def test_pipeline_effective_window_closed(client, conn, tenant) -> None:
-    from truefigure_sdk import pipeline
+    from truefigure_sdk.domain.policies import pipeline
     key = tenant["key"]
     dep = await _mkdep(client, key)
     await client.post("/v1/roster:batch",
@@ -318,7 +324,7 @@ async def test_ack_unknown_alert(client, tenant) -> None:
 
 # ---- secretbox + webhook verify edges ---------------------------------------
 def test_secretbox_rejects_bad_token() -> None:
-    from truefigure_sdk import secretbox
+    from truefigure_sdk.platform.security import secretbox
 
     with pytest.raises(ValueError):
         secretbox.decrypt("not-an-enc1-token")  # secretbox 45
@@ -327,14 +333,15 @@ def test_secretbox_rejects_bad_token() -> None:
 
 
 async def test_verify_webhook_unknown_returns_false(conn, tenant) -> None:
-    from truefigure_sdk import webhooks_delivery
+    from truefigure_sdk.domain.policies import webhooks_delivery
     ws = conn.execute("SELECT id FROM workspaces WHERE workspace_ref='ws_prod'").fetchone()["id"]
     assert webhooks_delivery.verify_webhook("wh_missing", int(ws), lambda *a: 200) is False  # webhooks 182
 
 
 async def test_time_savings_awaiting_parameters_when_no_param_version(client, conn, tenant) -> None:
     # Same measurable effect as the measured test, but NO parameter version -> awaiting labor_rates.
-    from truefigure_sdk import engine, pipeline
+    from truefigure_sdk.domain import engine
+    from truefigure_sdk.domain.policies import pipeline
     key = tenant["key"]
     dep = await _mkdep(client, key)
     ev = []

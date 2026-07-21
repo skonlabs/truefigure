@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from truefigure_sdk import envelope, registry
+from truefigure_sdk.api.response_models import envelope
+from truefigure_sdk.platform.config import registry
 from truefigure_sdk.errors import TFError, error_object
 
 

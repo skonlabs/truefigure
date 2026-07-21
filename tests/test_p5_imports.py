@@ -7,7 +7,8 @@ from __future__ import annotations
 import json
 
 from conftest import auth
-from truefigure_sdk import imports, storage
+from truefigure_sdk.api.routes import imports
+from truefigure_sdk.platform.storage import storage
 
 TS = "2026-07-01T10:00:00Z"
 

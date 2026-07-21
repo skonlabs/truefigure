@@ -7,7 +7,9 @@ from __future__ import annotations
 import pytest
 
 from conftest import auth
-from truefigure_sdk import engine, periods, pipeline
+from truefigure_sdk.domain import engine
+from truefigure_sdk.domain.entities import periods
+from truefigure_sdk.domain.policies import pipeline
 
 PERIOD = "2026-07"
 

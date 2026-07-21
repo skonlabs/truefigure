@@ -6,7 +6,9 @@ from __future__ import annotations
 
 from _helpers import activity, auth, cost_meter, lifecycle, make_deployment, post_events, provision
 
-from truefigure_sdk import engine, pipeline, webhooks_delivery
+from truefigure_sdk.domain import engine
+from truefigure_sdk.domain.policies import pipeline
+from truefigure_sdk.domain.policies import webhooks_delivery
 
 
 def _ids(conn, dep):
