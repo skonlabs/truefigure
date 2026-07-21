@@ -10,3 +10,7 @@ htmlcov/
 .env.*
 supabase/.branches/
 supabase/.temp/
+node_modules/
+sdk/**/dist/
+sdk/**/*.tsbuildinfo
+package-lock.json

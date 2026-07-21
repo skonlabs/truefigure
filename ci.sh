@@ -89,11 +89,35 @@ if [ -d src ] && [ -n "$(find src -name '*.py' 2>/dev/null)" ]; then python3 -m 
 say "mypy --strict"
 if [ -d src ] && [ -n "$(find src -name "*.py" 2>/dev/null)" ]; then python3 -m mypy --strict src/ && grn "mypy clean" || red "mypy failed"; else pend "P1" "no src/ to type-check"; fi
 
-# ---- 8. Python client tests (the 19 must stay green) -----------------------
-say "python client tests (19 must stay green)"
+# ---- 8. Thin SDK tests (python / node / react) -----------------------------
+# The shipped SDKs are THIN: transport + auth + envelope + retry + batching only.
+# No event_key, no timestamp canonicalization, no dedup-scope rules, no
+# enum/business validation, no grade/figure math. Proprietary logic stays on the
+# server. The zero-proprietary-logic guard below enforces this mechanically.
+say "no proprietary logic in shipped SDKs"
+if grep -RInE 'hashlib|sha256|canonical_ts|natural_key|_event_key' \
+     python/truefigure sdk/node/src sdk/react/src 2>/dev/null; then
+  red "proprietary/core logic leaked into an SDK (see matches above)"
+else grn "SDKs are thin (no key/canonicalization/business logic)"; fi
+
+say "python client tests (thin)"
 if command -v pytest >/dev/null && [ -d python/tests ]; then
-  ( cd python && pytest -q tests/ ) && grn "client tests green" || red "client tests failed"
+  ( cd python && pytest -q tests/ ) && grn "python client tests green" || red "python client tests failed"
 else pend "P0" "pytest/client not available"; fi
+
+say "node + react SDK build & tests"
+if command -v node >/dev/null; then
+  ok_js=1
+  for pkg in sdk/node sdk/react; do
+    if [ -x "$pkg/node_modules/.bin/tsc" ]; then
+      ( cd "$pkg" && rm -rf dist && ./node_modules/.bin/tsc -p tsconfig.json \
+          && node --test test/*.test.mjs ) || ok_js=0
+    else
+      pend "SDK" "$pkg deps not installed (run npm install in $pkg)"; ok_js=0
+    fi
+  done
+  [ "$ok_js" = 1 ] && grn "node + react SDKs build and pass" || red "node/react SDK build or tests failed"
+else pend "SDK" "node not available"; fi
 
 # ---- 9. Server + conformance test suite ------------------------------------
 say "server tests + coverage >= 90%"

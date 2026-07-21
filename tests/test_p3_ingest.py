@@ -4,14 +4,7 @@ value-assertion, regex fail-fast, batch limits, test-mode echo, partial batch.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 from conftest import auth
-
-# Import the reference CLIENT to prove the server computes identical event_keys.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
-from truefigure import events as client_events  # noqa: E402
 
 TS = "2026-07-01T00:00:00Z"
 
@@ -45,13 +38,18 @@ async def test_accept_and_persist_activity(client, conn, tenant) -> None:
     assert row["pipeline_status"] == "accepted"
 
 
-async def test_event_key_matches_reference_client(client, tenant) -> None:
+async def test_server_assigns_stable_key_and_dedups(client, tenant) -> None:
+    # The client sends a raw envelope (no client-side key). The server assigns the
+    # event_key; re-sending the identical envelope is a deduplicated no-op with the
+    # SAME server key. Idempotency lives entirely server-side.
     dep = await _dep(client, tenant["key"])
-    built = client_events.activity(dep, user_ref="u_1", timestamp=TS, work_item_id="W1",
-                                   action_type="suggestion_accepted")
-    expected = built["_event_key"]
-    r = await client.post("/v1/events:batch", json={"events": [_activity(dep)]}, headers=auth(tenant["key"]))
-    assert r.json()["data"]["results"][0]["event_key"] == expected
+    r1 = await client.post("/v1/events:batch", json={"events": [_activity(dep)]}, headers=auth(tenant["key"]))
+    first = r1.json()["data"]["results"][0]
+    assert first["status"] == "accepted" and len(first["event_key"]) == 32
+    r2 = await client.post("/v1/events:batch", json={"events": [_activity(dep)]}, headers=auth(tenant["key"]))
+    second = r2.json()["data"]["results"][0]
+    assert second["status"] == "duplicate"
+    assert second["event_key"] == first["event_key"]
 
 
 async def test_no_content_guarantee_evt006(client, tenant) -> None:

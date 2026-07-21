@@ -1,0 +1,32 @@
+{
+  "name": "@truefigure/sdk",
+  "version": "0.1.0",
+  "description": "Thin TypeScript/Node client for the TrueFigure API. Transport only — no proprietary logic.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "keywords": ["truefigure", "sdk", "analytics", "measurement"],
+  "devDependencies": {
+    "typescript": ">=5.4.0",
+    "@types/node": ">=18.0.0"
+  }
+}

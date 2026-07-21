@@ -1,8 +1,10 @@
-"""TrueFigure SDK: the measurement contract for AI value verification.
+"""TrueFigure SDK: a THIN transport client for AI value verification.
 
-The SDK witnesses facts (activity, lifecycle, cost meters, quality/revenue signals);
-an independent server-side engine measures. There is no field for content, and no
-field for value assertions - by construction.
+The SDK only witnesses facts (activity, lifecycle, cost meters, quality/revenue
+signals) and moves them over HTTP. It contains no proprietary logic: identity,
+deduplication, timestamp canonicalization, validation, and all measurement are
+performed by the independent server-side engine. Content and value-assertion
+fields are rejected by the server, not the client.
 """
 from .client import TrueFigureClient, BatchResult, OfflineBuffer, configure_logging
 from .errors import TrueFigureError, RateLimited, ErrorObject, REGISTRY
