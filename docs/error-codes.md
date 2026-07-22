@@ -1,5 +1,5 @@
 # Error reference
-See registry/error-codes.json for the machine-readable closed enum. Conventions:
+See contract/error-codes.json for the machine-readable closed enum. Conventions:
 - Format NP-<PLANE>-<NNN>: EVT (write), CFG (config), READ, AUTH, RATE, SRV.
 - Every error object: code, message, field_path, expected, received, retryable,
   retry_after?, doc_url, request_id. Batch rejections are per-item, index-aligned.

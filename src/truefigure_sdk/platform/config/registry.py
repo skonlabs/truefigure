@@ -1,4 +1,4 @@
-"""The closed error-code registry, loaded from registry/error-codes.json at runtime.
+"""The closed error-code registry, loaded from contract/error-codes.json at runtime.
 
 Every error response carries exactly one TF-<PLANE>-<NNN> code from this file.
 Inventing codes is a defect, so the registry is the single source of truth: the
@@ -12,8 +12,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-# repo layout: <root>/registry/error-codes.json ; this file is <root>/src/truefigure_sdk/registry.py
-_REGISTRY_PATH = Path(__file__).resolve().parents[4] / "registry" / "error-codes.json"
+# repo layout: <root>/contract/error-codes.json ; this file is <root>/src/truefigure_sdk/registry.py
+_REGISTRY_PATH = Path(__file__).resolve().parents[4] / "contract" / "error-codes.json"
 
 
 @lru_cache(maxsize=1)

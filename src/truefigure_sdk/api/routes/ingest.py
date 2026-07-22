@@ -6,7 +6,7 @@ Pipeline per event (partial-batch: one bad event never blocks the rest):
   -> id-namespace regex fail-fast -> event_key + dedup -> persist (or, for a
   test-mode key, echo without persisting).
 
-The wire event contract is validated against schemas/events.schema.json loaded
+The wire event contract is validated against contract/events.schema.json loaded
 at runtime (never a re-typed copy).
 """
 
@@ -32,7 +32,7 @@ from truefigure_sdk.platform.database import db
 router = APIRouter()
 SYSTEM_USER_ID = 1
 
-_SCHEMA_PATH = Path(__file__).resolve().parents[4] / "schemas" / "events.schema.json"
+_SCHEMA_PATH = Path(__file__).resolve().parents[4] / "contract" / "events.schema.json"
 _SCHEMA_VERSION_RE = re.compile(r"^1\.[0-9]+$")
 _VALUE_FIELDS = {"value", "value_usd", "savings", "roi", "amount", "price", "dollars", "revenue_usd", "cost_usd"}
 _MAX_BATCH = 500

@@ -13,7 +13,7 @@ conventional service you host separately; Supabase is the data platform.
 ## What's implemented
 - **29/29 OpenAPI endpoints** (auth, config plane, ingestion, imports, webhooks,
   read plane) — every path+verb exercised by a contract test.
-- **Ingestion**: schema-validated against `schemas/events.schema.json` at runtime;
+- **Ingestion**: schema-validated against `contract/events.schema.json` at runtime;
   no-content guarantee, SHA-256 dedup (spec 3.8, byte-identical to the client),
   partial-batch acceptance, rejected-events quarantine.
 - **Pipeline workers** (`FOR UPDATE SKIP LOCKED`): identity resolution (BR-011
@@ -29,16 +29,22 @@ conventional service you host separately; Supabase is the data platform.
 
 ## Repository layout
 ```
-openapi/openapi.yaml           # 29 paths (authoritative HTTP surface)
-schemas/events.schema.json     # wire event contract (Draft 2020-12, runtime-loaded)
-registry/error-codes.json      # closed TF-<PLANE>-<NNN> registry (26 codes)
-supabase/migrations/           # 0001 certified schema VERBATIM · 0002 lockdown · 0003 buckets
-supabase/verification.sql      # the 7/7 certification battery
-src/truefigure_sdk/            # FastAPI app + config/ingest/pipeline/imports/engine/read plane/…
-ops/opsctl.py                  # Console-substitute CLI
-python/                        # reference client (extended to all 29 endpoints; 26 tests)
+contract/                      # the API contract (single source of truth)
+  ├── openapi.yaml             #   29 paths (authoritative HTTP surface)
+  ├── events.schema.json       #   wire event contract (Draft 2020-12, runtime-loaded)
+  └── error-codes.json         #   closed TF-<PLANE>-<NNN> registry (26 codes)
+supabase/
+  ├── migrations/              # 0001 certified schema VERBATIM · 0002 lockdown · 0003 buckets
+  └── verification.sql         # the 7/7 certification battery
+src/truefigure_sdk/            # SERVER — layered:
+  ├── api/                     #   routes · request_models · response_models · application_services
+  ├── domain/                  #   engine · entities · policies  (core intelligence)
+  └── platform/                #   database · storage · billing · config · security
+python/                        # SDK — the pure-passthrough Python client (100% tested)
+ops/opsctl.py                  # Console-substitute control-plane CLI
 tests/                         # server tests + tests/sql (attacks, lockdown)
-tests/conformance/             # 50-UC matrix, golden E2E, error-registry, enum coverage
+  └── conformance/             #   50-UC matrix, golden E2E, error-registry, enum coverage
+docs/                          # architecture, discrepancy reports, certification logs
 ci.sh                          # the full gate
 ```
 

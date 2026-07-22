@@ -17,7 +17,7 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = yaml.safe_load((ROOT / "openapi" / "openapi.yaml").read_text())
+SPEC = yaml.safe_load((ROOT / "contract" / "openapi.yaml").read_text())
 
 _DUMMY = {
     "deployment_id": "dep_x", "figure_id": "fig_x", "report_id": "rep_x", "webhook_id": "wh_x",

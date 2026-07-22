@@ -28,8 +28,8 @@ Impact: **P0–P3 complete and gated.** **P4–P7** buildable now. **P8** now un
 ## Machine-artifact vs prose disagreements found
 | # | Where | Says | Wins | Note |
 |---|-------|------|------|------|
-| D1 | `IMPLEMENTATION.md` line 11 | schema has "36 enums" | **35** (the certified `schema.sql` defines 35 `CREATE TYPE`) | Same finding as the schema-build discrepancy report; the live DB has 35. Prose is stale. |
-| D2 | `IMPLEMENTATION.md` line 10 | error codes are `NP-<plane>-<nnn>` | **`TF-<plane>-<nnn>`** (the actual `registry/error-codes.json` uses `TF-`; 26 codes) | Build-spec §1 and §4 also say `TF-`. `NP-` is stale prose. |
+| D1 | `docs/IMPLEMENTATION.md` line 11 | schema has "36 enums" | **35** (the certified `schema.sql` defines 35 `CREATE TYPE`) | Same finding as the schema-build discrepancy report; the live DB has 35. Prose is stale. |
+| D2 | `docs/IMPLEMENTATION.md` line 10 | error codes are `NP-<plane>-<nnn>` | **`TF-<plane>-<nnn>`** (the actual `contract/error-codes.json` uses `TF-`; 26 codes) | Build-spec §1 and §4 also say `TF-`. `NP-` is stale prose. |
 | D3 | Build-spec §checksums (earlier schema task) | "36 enum types" | **35** | Carried forward; 31 tables & 377 columns match exactly, confirming 35 is correct. |
 | D5a | Reference client `create_parameter_version` | body field `parameters` | **`payload`** (Data Dictionary column name; the server contract) | The older client binding diverged from the built server; aligned the client to `payload`. |
 | D5b | Reference client `declare_change_event` | body field `scope_deployments` | **`deployment_refs`** (the server contract) | Same: aligned the client binding. |

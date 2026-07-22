@@ -139,7 +139,7 @@ def test_db_wire_enum_set_equality(conn) -> None:
     import json as _json
     from pathlib import Path
 
-    schema = _json.loads(Path(__file__).resolve().parents[2].joinpath("schemas/events.schema.json").read_text())
+    schema = _json.loads(Path(__file__).resolve().parents[2].joinpath("contract/events.schema.json").read_text())
     defs = schema["$defs"]
     # event_type (envelope) <-> DB enum event_type
     wire_event_type = set(defs["envelope"]["properties"]["event_type"]["enum"])
