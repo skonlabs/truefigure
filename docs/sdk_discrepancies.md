@@ -45,10 +45,11 @@ derivations, not conflicts; they are the documented column/wire correspondence.
 ## SDK architecture (post-review)
 Per the reference layering, logic is separated by responsibility (see
 `docs/architecture.md`):
-- **SDK (Python only)** carries client-side CONVENIENCE: request construction,
-  public-contract validation, local `event_key`, retries/backoff, timeouts,
-  cursor pagination, NDJSON file upload, async import polling, error mapping,
-  webhook signature verification, `provision()` workflow, typed results.
+- **SDK (Python only)** is PURE PASSTHROUGH for events (no validation, no
+  event_key, no canonicalization — nothing a downloaded copy could leak) plus
+  transport convenience: retries/backoff, timeouts, cursor pagination, NDJSON
+  file upload, async import polling, error mapping, webhook signature
+  verification, `provision()` workflow, typed results.
 - **Server** is split into `api/` (routes, request/response models, application
   services), `domain/` (engine, entities, policies — the core intelligence), and
   `platform/` (database, storage, billing, config, security).

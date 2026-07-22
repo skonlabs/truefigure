@@ -89,16 +89,20 @@ if [ -d src ] && [ -n "$(find src -name '*.py' 2>/dev/null)" ]; then python3 -m 
 say "mypy --strict"
 if [ -d src ] && [ -n "$(find src -name "*.py" 2>/dev/null)" ]; then python3 -m mypy --strict src/ && grn "mypy clean" || red "mypy failed"; else pend "P1" "no src/ to type-check"; fi
 
-# ---- 8. Python SDK (convenience client) + layering guards ------------------
-# The SDK carries client-side CONVENIENCE only (validation, retries, pagination,
-# file upload, polling, webhook verification, typed results, event_key for local
-# handles). The PROPRIETARY CORE — the measurement engine, grades, thresholds,
-# pricing — must live ONLY in the server domain layer, never in the SDK.
-say "no measurement/core logic in the SDK"
-if grep -RInE '_write_figure|compute_deployment|def _change_treatment|labor_rate|price_provenance' \
-     python/truefigure 2>/dev/null; then
-  red "measurement/core logic leaked into the SDK (see matches above)"
-else grn "SDK holds convenience only; measurement core stays server-side"; fi
+# ---- 8. Python SDK (pure-passthrough events) + layering guards -------------
+# A downloaded SDK is a distributable artifact, so it must contain NO logic a
+# competitor could lift: no event_key digest, no timestamp canonicalization, no
+# dedup-scope rules, no enum/business validation, no measurement. It shapes
+# envelopes and sends them; the server owns identity, validation, and measurement.
+# (Webhook signature VERIFICATION is allowed — standard HMAC on a secret the
+# customer already holds — so the guard targets the proprietary names precisely,
+# and separately forbids crypto in the event/transport modules.)
+say "no proprietary logic in the downloadable SDK"
+if grep -RInE 'natural_key|_event_key|canonical_ts|def _iso|_write_figure|compute_deployment|def _change_treatment|labor_rate|price_provenance' \
+     python/truefigure 2>/dev/null \
+   || grep -nE 'hashlib|sha256|hmac' python/truefigure/events.py python/truefigure/client.py 2>/dev/null; then
+  red "proprietary/core logic leaked into the SDK (see matches above)"
+else grn "SDK is pure passthrough; no proprietary logic ships to customers"; fi
 
 # Enforce the api/domain/platform layering: the domain (core) must not import the
 # api layer, keeping the intelligence layer independent of transport/controllers.

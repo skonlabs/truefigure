@@ -1,27 +1,24 @@
 # TrueFigure Python SDK
 
-The official Python client for the TrueFigure API. It is a **convenience client**
-— it does real client-side work to make integration pleasant — while the
-**server remains authoritative** for everything that matters.
+The official Python client for the TrueFigure API. It handles the tedious
+transport concerns for you, but it ships **no business or proprietary logic** —
+a downloaded copy reveals nothing beyond the published API contract. The
+**server is authoritative** for validation, identity, and measurement.
 
 ```python
 from truefigure import TrueFigureClient
 tf = TrueFigureClient(api_key, deployment_id="dep_1")
 tf.track_activity(user_ref="u1", timestamp="2026-07-01T00:00:00Z",
                   work_item_id="w1", action_type="suggestion_accepted")
-result = tf.flush()          # -> BatchResult(accepted, duplicates, rejected)
+result = tf.flush()          # server assigns the event_keys
+print(result.accepted[0]["event_key"])  # authoritative key from the server
 ```
 
-## What the SDK does (client-side convenience)
+## What the SDK does (transport convenience only)
 
 - **Auth header handling** — `Authorization: Bearer …`, optional `X-TrueFigure-Source`
-- **Request construction & (de)serialization** — typed builders assemble the
-  public event envelopes; JSON in/out
-- **Public-contract input validation** — required fields, public enum membership
-  (`action_type`, `meter`, `signal`, …), timezone-aware timestamps, `quantity >= 0`,
-  fast and friendly — *before* a round-trip
-- **Idempotency `event_key`** — computed locally so you get an immediate handle;
-  the server recomputes it authoritatively (the client copy is a convenience)
+- **Request construction & (de)serialization** — builders assemble the public
+  event envelopes verbatim (no validation, no key, no canonicalization); JSON in/out
 - **Retries & backoff** — contract-driven: only `retryable` / HTTP 429 / 5xx;
   honors `retry_after`
 - **Timeouts** — per-client, configurable (`timeout=`)

@@ -101,20 +101,27 @@ class TrueFigureClient:
         self._uploader = uploader
 
     # ---------------- event enqueue API ----------------
-    def track_activity(self, **kw) -> str:
+    # track_* only SHAPE the public envelope and enqueue it; they return the queue
+    # position (a local handle). The authoritative, server-assigned event_key is
+    # returned in BatchResult.results[*].event_key after flush().
+    def track_activity(self, **kw) -> int:
         return self._enqueue(ev.activity(self._dep(kw.pop("deployment_id", None)), **kw))
 
-    def track_lifecycle(self, **kw) -> str:
+    def track_lifecycle(self, **kw) -> int:
         return self._enqueue(ev.lifecycle(self._dep(kw.pop("deployment_id", None)), **kw))
 
-    def track_cost(self, **kw) -> str:
+    def track_cost(self, **kw) -> int:
         return self._enqueue(ev.cost_meter(self._dep(kw.pop("deployment_id", None)), **kw))
 
-    def track_quality(self, **kw) -> str:
+    def track_quality(self, **kw) -> int:
         return self._enqueue(ev.quality_signal(self._dep(kw.pop("deployment_id", None)), **kw))
 
-    def track_revenue(self, **kw) -> str:
+    def track_revenue(self, **kw) -> int:
         return self._enqueue(ev.revenue_signal(self._dep(kw.pop("deployment_id", None)), **kw))
+
+    def track(self, envelope: dict) -> int:
+        """Enqueue a pre-shaped raw envelope (escape hatch for custom mappers)."""
+        return self._enqueue(dict(envelope))
 
     def _dep(self, override):
         d = override or self.deployment_id
@@ -122,12 +129,12 @@ class TrueFigureClient:
             raise ValueError("deployment_id required (constructor default or per-call)")
         return d
 
-    def _enqueue(self, envelope: dict) -> str:
-        key = envelope["_event_key"]
+    def _enqueue(self, envelope: dict) -> int:
         self._pending.append(envelope)
+        pos = len(self._pending)
         if len(self._pending) >= self.MAX_BATCH:
             self.flush()
-        return key
+        return pos
 
     # ---------------- flush / echo ----------------
     def flush(self, mode: str = "production") -> BatchResult:
@@ -139,9 +146,8 @@ class TrueFigureClient:
         results, req_id = [], ""
         for i in range(0, len(batch), self.MAX_BATCH):
             chunk = batch[i:i + self.MAX_BATCH]
-            wire = [{k: v for k, v in e.items() if k != "_event_key"} for e in chunk]
             try:
-                env = self._request("POST", "/v1/events:batch", {"events": wire},
+                env = self._request("POST", "/v1/events:batch", {"events": chunk},
                                     extra_headers={"X-TrueFigure-Mode": mode})
             except (TrueFigureError,) as err:
                 if self.buffer:
@@ -164,12 +170,17 @@ class TrueFigureClient:
         logger.info("flush complete: %r", br, extra={"request_id": req_id, "batch_size": len(batch)})
         return br
 
+    def ingest(self, envelopes: list[dict], mode: str = "production") -> BatchResult:
+        """Thin passthrough: POST a list of raw envelopes directly (server assigns keys)."""
+        env = self._request("POST", "/v1/events:batch", {"events": list(envelopes)},
+                            extra_headers={"X-TrueFigure-Mode": mode})
+        return BatchResult(env["data"]["results"], env["meta"]["request_id"])
+
     def echo(self, envelopes: Optional[list[dict]] = None) -> BatchResult:
         """Parse-echo test mode: same endpoint, header-switched; stores nothing server-side."""
         if envelopes is None:
             envelopes, self._pending = self._pending, []
-        wire = [{k: v for k, v in e.items() if k != "_event_key"} for e in envelopes]
-        env = self._request("POST", "/v1/events:batch", {"events": wire},
+        env = self._request("POST", "/v1/events:batch", {"events": list(envelopes)},
                             extra_headers={"X-TrueFigure-Mode": "test"})
         return BatchResult(env["data"]["results"], env["meta"]["request_id"])
 
@@ -382,9 +393,7 @@ class TrueFigureClient:
         optionally poll to completion. Same envelopes/validators/dedup as :batch."""
         created = self.create_import(kind, expected_events=expected_events if expected_events is not None else len(events))
         import_id, upload_url = created["import_id"], created["upload_url"]
-        ndjson = "\n".join(
-            json.dumps({k: v for k, v in e.items() if k != "_event_key"}) for e in events
-        ).encode("utf-8")
+        ndjson = "\n".join(json.dumps(e) for e in events).encode("utf-8")
         self._upload(upload_url, ndjson)
         logger.info("import uploaded: %d events", len(events),
                     extra={"request_id": created.get("request_id"), "batch_size": len(events)})

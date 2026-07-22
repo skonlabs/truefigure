@@ -6,7 +6,7 @@ and consistent, while the SDK carries only client-side convenience.
 ```
 python/truefigure/            SDK  — client-side convenience only
 ├── client.py                 file upload, pagination, retries, polling, timeouts, transport
-├── events.py                 request construction + public-contract validation + local event_key
+├── events.py                 request construction only (no validation, no key, no canonicalization)
 ├── webhooks.py               webhook signature verification (consumer-side HMAC)
 ├── types.py                  language-specific typed results
 └── errors.py                 error mapping (closed TF-<PLANE>-<NNN> registry)
@@ -35,7 +35,7 @@ src/truefigure_sdk/           SERVER
 
 | Concern | Layer | Module(s) |
 |---|---|---|
-| File handling, client validation, retries, polling, typed results, workflows | **SDK** | `python/truefigure/*` |
+| File handling, retries, polling, typed results, workflows (NO validation/keying — pure passthrough) | **SDK** | `python/truefigure/*` |
 | Authentication, authorization, request orchestration, async-job mgmt, result aggregation | **API application** | `api/routes`, `api/application_services`, `api/request_models`, `api/response_models` |
 | Engines, policy evaluation, confidence/margin, result ranking | **Core intelligence** | `domain/engine.py`, `domain/policies`, `domain/entities` |
 | Storage, database, queues (workers), billing, observability, external providers | **Platform** | `platform/*` |

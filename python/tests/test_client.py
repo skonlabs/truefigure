@@ -1,5 +1,9 @@
-"""Tests for the TrueFigure reference client. Run: python -m pytest tests/ -q"""
-import json
+"""Tests for the TrueFigure client (pure passthrough for events).
+
+Asserts transport behavior (batching, retry, buffering, envelope, error mapping)
+and that the event builders carry ZERO logic: no event_key, no canonicalization,
+no enum/business validation. The server owns all of that.
+"""
 import os
 import sys
 import tempfile
@@ -29,52 +33,64 @@ def accepted(n):
     return [{"index": i, "status": "accepted", "event_key": f"k{i}"} for i in range(n)]
 
 
-# ---------- builders: structural guarantees ----------
+# ---------- builders: pure shaping, no logic ----------
 
-def test_builders_reject_unknown_fields():
-    with pytest.raises(TypeError):
-        events.activity("dep-1", user_ref="u1", timestamp="2026-07-01T00:00:00Z",
-                        work_item_id="w1", action_type="draft_generated",
-                        prompt_text="THIS MUST NOT EXIST")  # no content channel exists
-
-
-def test_builders_reject_value_assertions():
-    with pytest.raises(TypeError):
-        events.cost_meter("dep-1", meter="api_calls", quantity=10,
-                          timestamp="2026-07-01T00:00:00Z", savings_usd=5000)
-
-
-def test_enum_validation():
-    with pytest.raises(ValueError):
-        events.activity("dep-1", user_ref="u1", timestamp="2026-07-01T00:00:00Z",
-                        work_item_id="w1", action_type="NOT_A_REAL_ACTION")
+def test_builder_shapes_public_envelope_only():
+    e = events.activity("dep-1", user_ref="u1", timestamp="2026-07-01T00:00:00Z",
+                        work_item_id="w1", action_type="draft_generated")
+    assert e == {
+        "schema_version": "1.0", "deployment_id": "dep-1", "event_type": "activity",
+        "origin": "customer_system",
+        "payload": {"user_ref": "u1", "timestamp": "2026-07-01T00:00:00Z",
+                    "work_item_id": "w1", "action_type": "draft_generated"},
+    }
+    assert "_event_key" not in e  # the client never computes a key
 
 
-def test_qa_label_requires_schema():
-    with pytest.raises(ValueError):
-        events.quality_signal("dep-1", work_item_id="w1", signal="qa_label",
-                              timestamp="2026-07-01T00:00:00Z")  # no label schema/value
+def test_builder_does_not_canonicalize_timestamp():
+    e = events.lifecycle("dep-1", work_item_id="w1", event="completed",
+                         timestamp="2026-07-15T15:02:11+01:00")
+    assert e["payload"]["timestamp"] == "2026-07-15T15:02:11+01:00"  # verbatim; server canonicalizes
 
 
-def test_natural_key_deterministic():
-    kw = dict(user_ref="u1", timestamp="2026-07-01T00:00:00Z", work_item_id="w1", action_type="draft_generated")
-    e1 = events.activity("dep-1", **kw)
-    e2 = events.activity("dep-1", **kw)
-    assert e1["_event_key"] == e2["_event_key"]  # duplicate send -> same key -> server no-op
+def test_builder_does_not_validate_enums_or_reject_fields():
+    # An unusual action_type is NOT rejected client-side; extras are forwarded verbatim.
+    e = events.activity("dep-1", user_ref="u1", timestamp="2026-07-01T00:00:00Z",
+                        work_item_id="w1", action_type="anything_the_server_will_judge",
+                        model_version_ref="gpt-x")
+    assert e["payload"]["action_type"] == "anything_the_server_will_judge"
+    assert e["payload"]["model_version_ref"] == "gpt-x"
 
 
-# ---------- client: batching, retry, buffer, echo ----------
+def test_build_event_generic_with_scope():
+    e = events.build_event("dep-1", "revenue_signal",
+                           {"work_item_id": "w1", "revenue_ref": "DEAL", "timestamp": "2026-07-01T00:00:00Z"},
+                           idempotency_scope="q3")
+    assert e["event_type"] == "revenue_signal" and e["idempotency_scope"] == "q3"
 
-def test_flush_sends_batch_and_maps_results():
+
+# ---------- client: batching, retry, buffer, echo, ingest ----------
+
+def test_track_returns_queue_position_and_flush_surfaces_server_keys():
     t = make_transport([(200, {}, ok_env(accepted(2)))])
     c = TrueFigureClient("key", transport=t, deployment_id="dep-1")
-    c.track_activity(user_ref="u1", timestamp="2026-07-01T00:00:00Z", work_item_id="w1", action_type="draft_generated")
-    c.track_cost(meter="api_calls", quantity=3, timestamp="2026-07-01T00:00:00Z")
+    assert c.track_activity(user_ref="u1", timestamp="2026-07-01T00:00:00Z", work_item_id="w1", action_type="draft_generated") == 1
+    assert c.track_cost(meter="api_calls", quantity=3, timestamp="2026-07-01T00:00:00Z") == 2
     br = c.flush()
     assert len(br.accepted) == 2 and not br.rejected
+    assert [r["event_key"] for r in br.accepted] == ["k0", "k1"]  # keys come FROM the server
     sent = t.calls[0]["body"]["events"]
-    assert all("_event_key" not in e for e in sent)  # internal key stripped from wire
+    assert all("_event_key" not in e for e in sent)  # nothing internal ever hits the wire
     assert sent[0]["schema_version"] == "1.0" and sent[0]["origin"] == "customer_system"
+
+
+def test_ingest_passthrough_posts_raw_envelopes():
+    t = make_transport([(200, {}, ok_env(accepted(1)))])
+    c = TrueFigureClient("key", transport=t, deployment_id="dep-1")
+    env = events.cost_meter("dep-1", meter="api_calls", quantity=1, timestamp="2026-07-01T00:00:00Z")
+    br = c.ingest([env])
+    assert len(br.accepted) == 1
+    assert t.calls[0]["body"]["events"] == [env]
 
 
 def test_retry_on_429_honors_retry_after_then_succeeds(monkeypatch):
@@ -104,7 +120,6 @@ def test_offline_buffer_spools_and_replays():
         buf = os.path.join(d, "spool.jsonl")
         fail = {"data": None, "meta": {"request_id": "r"}, "errors": [
             {"code": "TF-SRV-002", "message": "paused", "retryable": True, "request_id": "r"}]}
-        # all attempts fail -> spool
         t1 = make_transport([(503, {}, fail)] * 6)
         c1 = TrueFigureClient("key", transport=t1, deployment_id="dep-1", buffer_path=buf, max_retries=1)
         c1.track_activity(user_ref="u1", timestamp="2026-07-01T00:00:00Z", work_item_id="w1", action_type="draft_generated")
@@ -114,7 +129,6 @@ def test_offline_buffer_spools_and_replays():
         finally:
             _t.sleep = orig
         assert br.results == [] and os.path.getsize(buf) > 0
-        # next client drains the spool and delivers (idempotency makes replay safe)
         t2 = make_transport([(200, {}, ok_env(accepted(1)))])
         c2 = TrueFigureClient("key", transport=t2, deployment_id="dep-1", buffer_path=buf)
         br2 = c2.flush()
@@ -123,8 +137,7 @@ def test_offline_buffer_spools_and_replays():
 
 def test_echo_uses_test_mode_header():
     echo_results = [{"index": 0, "status": "accepted", "event_key": "k0",
-                     "echo": {"resolved_person": "p-77", "resolution_basis": "deterministic",
-                              "matched_work_item": "wi-9", "action_class": "assist", "accepted": True, "reason": None}}]
+                     "echo": {"resolved_person": "p-77", "accepted": True, "reason": None}}]
     t = make_transport([(200, {}, ok_env(echo_results))])
     c = TrueFigureClient("key", transport=t, deployment_id="dep-1")
     c.track_activity(user_ref="u1", timestamp="2026-07-01T00:00:00Z", work_item_id="wi-9", action_type="draft_generated")
@@ -134,48 +147,11 @@ def test_echo_uses_test_mode_header():
 
 
 def test_refused_figures_are_data_not_errors():
-    fig = {"figures": [{"figure_id": "f1", "status": "refused", "reason": "insufficient_evidence",
-                        "margin_exceeds_effect": True, "expected_verdict_date": "2026-09-01"}]}
+    fig = {"figures": [{"figure_id": "f1", "status": "refused", "margin_exceeds_effect": True}]}
     t = make_transport([(200, {}, {"data": fig, "meta": {"schema_version": "1.0", "request_id": "r", "as_of": "now"}, "errors": []})])
     c = TrueFigureClient("key", transport=t, deployment_id="dep-1")
     data = c.figures(period="2026-Q2")
-    assert data["figures"][0]["status"] == "refused"  # BR-005: a refusal is a successful response
-
-
-def test_lifecycle_key_is_workspace_scoped_deployment_independent():
-    kw = dict(work_item_id="CLM-1", event="completed", timestamp="2026-07-01T10:05:00Z")
-    e1 = events.lifecycle("dep_A", **kw)
-    e2 = events.lifecycle("dep_B", **kw)  # second deployment measuring the same queue
-    assert e1["_event_key"] == e2["_event_key"]  # same fact -> same identity -> server duplicate
-
-
-def test_activity_key_is_deployment_scoped():
-    kw = dict(user_ref="u1", timestamp="2026-07-01T00:00:00Z", work_item_id="w1", action_type="draft_generated")
-    e1 = events.activity("dep_A", **kw)
-    e2 = events.activity("dep_B", **kw)
-    assert e1["_event_key"] != e2["_event_key"]  # AI touches belong to their deployment
-
-
-def test_status_change_key_includes_status_to():
-    base = dict(work_item_id="CLM-1", event="status_change", timestamp="2026-07-01T10:00:00Z", status_from="A")
-    e1 = events.lifecycle("dep_A", status_to="B", **base)
-    e2 = events.lifecycle("dep_A", status_to="C", **base)
-    assert e1["_event_key"] != e2["_event_key"]  # distinct transitions at one timestamp stay distinct
-
-
-def test_timestamp_canonicalization_equal_instants_equal_keys():
-    kw = dict(work_item_id="CLM-1", event="completed")
-    e1 = events.lifecycle("dep_A", timestamp="2026-07-15T14:02:11Z", **kw)
-    e2 = events.lifecycle("dep_A", timestamp="2026-07-15T15:02:11+01:00", **kw)
-    e3 = events.lifecycle("dep_A", timestamp="2026-07-15T14:02:11.000+00:00", **kw)
-    assert e1["_event_key"] == e2["_event_key"] == e3["_event_key"]
-    assert e1["payload"]["timestamp"] == "2026-07-15T14:02:11.000Z"  # canonical wire form
-
-
-def test_naive_timestamp_rejected():
-    from datetime import datetime as dt
-    with pytest.raises(ValueError):
-        events.cost_meter("dep_A", meter="api_calls", quantity=1, timestamp=dt(2026, 7, 1, 12, 0, 0))
+    assert data["figures"][0]["status"] == "refused"  # a refusal is a successful response, decided server-side
 
 
 def test_source_ref_header_attached():
