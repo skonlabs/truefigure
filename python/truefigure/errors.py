@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 _REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "error_codes.json")

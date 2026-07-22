@@ -6,11 +6,34 @@ build-backend = "setuptools.build_meta"
 name = "truefigure-sdk"
 version = "0.1.0"
 description = "TrueFigure SDK - the measurement contract for AI value verification (witness events; read graded figures)"
+readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Proprietary" }
+# Zero runtime dependencies — the SDK is pure standard library (urllib/json/hmac).
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Intended Audience :: Developers",
+    "Typing :: Typed",
+]
 
 [tool.setuptools]
 packages = ["truefigure"]
 
 [tool.setuptools.package-data]
-truefigure = ["error_codes.json"]
+truefigure = ["error_codes.json", "py.typed"]
+
+[tool.ruff]
+line-length = 110
+# The SDK supports Python 3.9+, so `Optional[X]` / `Dict` are correct — do not
+# let ruff rewrite them to 3.10+ syntax that would break on 3.9.
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests favor compact fixtures: allow lambda assignment and one-line setup.
+"tests/*" = ["E731", "E702", "E701"]

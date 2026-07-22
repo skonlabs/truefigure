@@ -111,9 +111,10 @@ if grep -RInE 'from truefigure_sdk\.api|import truefigure_sdk\.api' src/truefigu
   red "layering violation: domain/platform imports the api layer"
 else grn "domain/platform independent of api (clean layering)"; fi
 
-say "python SDK tests"
-if command -v pytest >/dev/null && [ -d python/tests ]; then
-  ( cd python && pytest -q tests/ ) && grn "python SDK tests green" || red "python SDK tests failed"
+say "python SDK tests + coverage == 100%"
+if python3 -m pytest --version >/dev/null 2>&1 && [ -d python/tests ]; then
+  ( cd python && python3 -m pytest -q tests/ --cov=truefigure --cov-report=term-missing --cov-fail-under=100 ) \
+    && grn "python SDK tests green (100% coverage)" || red "python SDK tests/coverage failed"
 else pend "P0" "pytest/client not available"; fi
 
 # ---- 9. Server + conformance test suite ------------------------------------

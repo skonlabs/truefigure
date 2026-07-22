@@ -12,13 +12,13 @@ from __future__ import annotations
 import json
 import logging
 import time
-import urllib.request
 import urllib.error
-from urllib.parse import urlencode
+import urllib.request
 from typing import Callable, Optional
+from urllib.parse import urlencode
 
-from .errors import ErrorObject, TrueFigureError, RateLimited
 from . import events as ev
+from .errors import ErrorObject, RateLimited, TrueFigureError
 
 logger = logging.getLogger("truefigure")
 
@@ -149,7 +149,7 @@ class TrueFigureClient:
             try:
                 env = self._request("POST", "/v1/events:batch", {"events": chunk},
                                     extra_headers={"X-TrueFigure-Mode": mode})
-            except (TrueFigureError,) as err:
+            except TrueFigureError as err:
                 if self.buffer:
                     self.buffer.append(chunk)
                     logger.warning("flush failed; %d events spooled to offline buffer",
@@ -207,9 +207,12 @@ class TrueFigureClient:
                             planned_rollout_at: Optional[str] = None,
                             service_user_refs: Optional[list] = None) -> dict:
         body = {"name": name, "type": type}
-        if external_ref: body["external_ref"] = external_ref
-        if planned_rollout_at: body["planned_rollout_at"] = planned_rollout_at
-        if service_user_refs: body["service_user_refs"] = service_user_refs
+        if external_ref:
+            body["external_ref"] = external_ref
+        if planned_rollout_at:
+            body["planned_rollout_at"] = planned_rollout_at
+        if service_user_refs:
+            body["service_user_refs"] = service_user_refs
         return self._request("POST", "/v1/deployments", body)["data"]
 
     def create_parameter_version(self, parameters: dict, effective_from: str,
@@ -227,14 +230,18 @@ class TrueFigureClient:
                              description: str, deployment_refs: Optional[list] = None,
                              supersedes: Optional[str] = None) -> dict:
         body = {"type": type, "occurred_at": occurred_at, "sidedness": sidedness, "description": description}
-        if deployment_refs: body["deployment_refs"] = deployment_refs
-        if supersedes: body["supersedes"] = supersedes
+        if deployment_refs:
+            body["deployment_refs"] = deployment_refs
+        if supersedes:
+            body["supersedes"] = supersedes
         return self._request("POST", "/v1/change-events", body)["data"]
 
     def create_import(self, kind: str, expected_events: Optional[int] = None) -> dict:
         body = {"kind": kind}
-        if expected_events: body["expected_events"] = expected_events
-        if self.source_ref: body["source_ref"] = self.source_ref
+        if expected_events:
+            body["expected_events"] = expected_events
+        if self.source_ref:
+            body["source_ref"] = self.source_ref
         return self._request("POST", "/v1/imports", body)["data"]
 
     def import_status(self, import_id: str) -> dict:

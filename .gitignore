@@ -14,3 +14,5 @@ node_modules/
 sdk/**/dist/
 sdk/**/*.tsbuildinfo
 package-lock.json
+build/
+*.whl

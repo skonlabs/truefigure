@@ -11,6 +11,7 @@ import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
+
 from truefigure import TrueFigureClient, TrueFigureError, events
 
 
@@ -115,7 +116,8 @@ def test_nonretryable_error_raises_with_code():
     assert "TF-EVT-002" in str(e.value) and e.value.errors[0].fix_owner == "config_owner"
 
 
-def test_offline_buffer_spools_and_replays():
+def test_offline_buffer_spools_and_replays(monkeypatch):
+    monkeypatch.setattr("time.sleep", lambda s: None)
     with tempfile.TemporaryDirectory() as d:
         buf = os.path.join(d, "spool.jsonl")
         fail = {"data": None, "meta": {"request_id": "r"}, "errors": [
@@ -123,11 +125,7 @@ def test_offline_buffer_spools_and_replays():
         t1 = make_transport([(503, {}, fail)] * 6)
         c1 = TrueFigureClient("key", transport=t1, deployment_id="dep-1", buffer_path=buf, max_retries=1)
         c1.track_activity(user_ref="u1", timestamp="2026-07-01T00:00:00Z", work_item_id="w1", action_type="draft_generated")
-        import time as _t; orig = _t.sleep; _t.sleep = lambda s: None
-        try:
-            br = c1.flush()
-        finally:
-            _t.sleep = orig
+        br = c1.flush()
         assert br.results == [] and os.path.getsize(buf) > 0
         t2 = make_transport([(200, {}, ok_env(accepted(1)))])
         c2 = TrueFigureClient("key", transport=t2, deployment_id="dep-1", buffer_path=buf)
