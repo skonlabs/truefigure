@@ -16,3 +16,4 @@ sdk/**/*.tsbuildinfo
 package-lock.json
 build/
 *.whl
+dist/
