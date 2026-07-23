@@ -18,10 +18,10 @@ from dataclasses import dataclass, field
 
 from fastapi import Request
 
-from truefigure_sdk.api.request_models.wire import key_prefix_to_mode
-from truefigure_sdk.errors import TFError
-from truefigure_sdk.platform.config.config import get_settings
-from truefigure_sdk.platform.database import db
+from truefigure_server.api.request_models.wire import key_prefix_to_mode
+from truefigure_server.errors import TFError
+from truefigure_server.platform.config.config import get_settings
+from truefigure_server.platform.database import db
 
 
 def hash_key(presented_key: str) -> str:

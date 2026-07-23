@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from conftest import auth
-from truefigure_sdk.domain.entities import refs
+from truefigure_server.domain.entities import refs
 
 
 def test_refs_encode_decode_roundtrip() -> None:

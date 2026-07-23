@@ -13,9 +13,9 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
-from truefigure_sdk.api.response_models import envelope
-from truefigure_sdk.errors import TFError
-from truefigure_sdk.platform.config.config import get_settings
+from truefigure_server.api.response_models import envelope
+from truefigure_server.errors import TFError
+from truefigure_server.platform.config.config import get_settings
 
 M = TypeVar("M", bound=BaseModel)
 

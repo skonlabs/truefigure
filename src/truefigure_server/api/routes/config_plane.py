@@ -13,12 +13,12 @@ import psycopg
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from truefigure_sdk.api.application_services.auth import Principal, require_principal
-from truefigure_sdk.api.request_models import wire
-from truefigure_sdk.api.request_models.http import ok, parse_body
-from truefigure_sdk.domain.entities import refs
-from truefigure_sdk.errors import TFError
-from truefigure_sdk.platform.database import db
+from truefigure_server.api.application_services.auth import Principal, require_principal
+from truefigure_server.api.request_models import wire
+from truefigure_server.api.request_models.http import ok, parse_body
+from truefigure_server.domain.entities import refs
+from truefigure_server.errors import TFError
+from truefigure_server.platform.database import db
 
 router = APIRouter()
 SYSTEM_USER_ID = 1
@@ -495,7 +495,7 @@ async def create_webhook(request: Request, principal: Principal = Depends(requir
     for ev in body.events:
         if ev not in valid:
             raise TFError("TF-CFG-007", field_path="events", detail=f"unknown event type {ev}")
-    from truefigure_sdk.platform.security import secretbox
+    from truefigure_server.platform.security import secretbox
     with db.transaction() as cur:
         # Idempotent by (workspace, url, event set): return existing if present.
         cur.execute(

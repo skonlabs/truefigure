@@ -16,7 +16,7 @@ from typing import Any
 
 import psycopg
 
-from truefigure_sdk.platform.database import db
+from truefigure_server.platform.database import db
 
 SYSTEM_USER_ID = 1
 

@@ -1,7 +1,7 @@
 """P3 — SERVER-SIDE event_key correctness (no client involvement).
 
 event_key computation is proprietary and lives ONLY on the server
-(`truefigure_sdk.eventkey`). The shipped SDKs never compute it. These tests lock
+(`truefigure_server.eventkey`). The shipped SDKs never compute it. These tests lock
 the server algorithm to frozen golden digests and exercise family scoping,
 idempotency scope, and timestamp canonicalization. No database needed.
 """
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from truefigure_sdk.domain.entities import eventkey
+from truefigure_server.domain.entities import eventkey
 
 DEP = "dep_x"
 TS = "2026-07-01T09:14:00+01:00"  # offset form; canonicalizes to 08:14:00.000Z

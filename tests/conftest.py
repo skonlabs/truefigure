@@ -58,8 +58,8 @@ def _database() -> Iterator[None]:
     os.environ.setdefault("TF_ENVIRONMENT", "production")
 
     # Import settings/db AFTER env is set; clear any cached settings.
-    from truefigure_sdk.platform.config import config
-    from truefigure_sdk.platform.database import db
+    from truefigure_server.platform.config import config
+    from truefigure_server.platform.database import db
 
     config.get_settings.cache_clear()
     db.close_pool()
@@ -85,7 +85,7 @@ def _clean() -> Iterator[None]:
         c.execute(f"TRUNCATE {names} RESTART IDENTITY CASCADE")
         c.execute(_SEED_USER)
     # Reset in-process rate-limiter state so per-test counters don't leak.
-    from truefigure_sdk.platform.billing import ratelimit
+    from truefigure_server.platform.billing import ratelimit
 
     ratelimit.reset()
     yield
@@ -140,7 +140,7 @@ def sandbox() -> Iterator[dict[str, str]]:
     """A sandbox-environment tenant with a TEST-mode key (echo-vs-persist path)."""
     import re
 
-    from truefigure_sdk.platform.config import config
+    from truefigure_server.platform.config import config
 
     os.environ["TF_ENVIRONMENT"] = "sandbox"
     config.get_settings.cache_clear()
@@ -160,7 +160,7 @@ async def client() -> Any:
     """An httpx AsyncClient bound to the FastAPI app via ASGI transport."""
     import httpx
 
-    from truefigure_sdk.api.app import app
+    from truefigure_server.api.app import app
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:

@@ -36,7 +36,7 @@ contract/                      # the API contract (single source of truth)
 supabase/
   ├── migrations/              # 0001 certified schema VERBATIM · 0002 lockdown · 0003 buckets
   └── verification.sql         # the 7/7 certification battery
-src/truefigure_sdk/            # SERVER — layered:
+src/truefigure_server/            # SERVER — layered:
   ├── api/                     #   routes · request_models · response_models · application_services
   ├── domain/                  #   engine · entities · policies  (core intelligence)
   └── platform/                #   database · storage · billing · config · security

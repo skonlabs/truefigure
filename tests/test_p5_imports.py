@@ -7,8 +7,8 @@ from __future__ import annotations
 import json
 
 from conftest import auth
-from truefigure_sdk.api.routes import imports
-from truefigure_sdk.platform.storage import storage
+from truefigure_server.api.routes import imports
+from truefigure_server.platform.storage import storage
 
 TS = "2026-07-01T10:00:00Z"
 
@@ -131,7 +131,7 @@ async def test_import_unknown_kind_rejected(client, tenant) -> None:
 async def test_run_import_missing_upload_fails(client, conn, tenant) -> None:
     import pytest
 
-    from truefigure_sdk.errors import TFError
+    from truefigure_server.errors import TFError
     imp, _ = await _create_import(client, tenant["key"])
     # No upload performed -> worker marks job failed and raises.
     with pytest.raises(TFError):

@@ -12,7 +12,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-# repo layout: <root>/contract/error-codes.json ; this file is <root>/src/truefigure_sdk/registry.py
+# repo layout: <root>/contract/error-codes.json ; this file is <root>/src/truefigure_server/registry.py
 _REGISTRY_PATH = Path(__file__).resolve().parents[4] / "contract" / "error-codes.json"
 
 

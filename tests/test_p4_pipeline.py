@@ -5,7 +5,7 @@ the three daily aggregates with EXACT hand-computed expectations.
 from __future__ import annotations
 
 from conftest import auth
-from truefigure_sdk.domain.policies import pipeline
+from truefigure_server.domain.policies import pipeline
 
 TS1 = "2026-07-01T10:00:00Z"
 TS2 = "2026-07-01T11:00:00Z"

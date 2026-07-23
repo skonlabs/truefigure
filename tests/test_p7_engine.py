@@ -5,7 +5,7 @@ refusal/awaiting states, grades, parameter stamping, reports, live/*, alerts.
 from __future__ import annotations
 
 from conftest import auth
-from truefigure_sdk.domain import engine
+from truefigure_server.domain import engine
 
 PERIOD = "2026-07"
 D1 = "2026-07-01T10:00:00Z"
@@ -37,7 +37,7 @@ def _meter(dep, meter, qty, ts):
 
 # ---- cost figure: dollarized, parameter stamped -----------------------------
 async def test_cost_figure_priced_and_stamped(client, conn, tenant) -> None:
-    from truefigure_sdk.domain.policies import pipeline
+    from truefigure_server.domain.policies import pipeline
     key = tenant["key"]
     dep, *_ = await _dep(client, key)
     # 100 + 250 = 350 tokens_out; price 0.002/unit -> 0.70 usd
@@ -56,7 +56,7 @@ async def test_cost_figure_priced_and_stamped(client, conn, tenant) -> None:
 
 
 async def test_cost_awaiting_parameters(client, conn, tenant) -> None:
-    from truefigure_sdk.domain.policies import pipeline
+    from truefigure_server.domain.policies import pipeline
     key = tenant["key"]
     dep, *_ = await _dep(client, key)
     await _post(client, key, [_meter(dep, "tokens_out", 100, D1)])
@@ -70,7 +70,7 @@ async def test_cost_awaiting_parameters(client, conn, tenant) -> None:
 
 # ---- seat utilization / waste ----------------------------------------------
 async def test_seat_utilization_and_waste(client, conn, tenant) -> None:
-    from truefigure_sdk.domain.policies import pipeline
+    from truefigure_server.domain.policies import pipeline
     key = tenant["key"]
     dep, *_ = await _dep(client, key)
     await client.post("/v1/roster:batch", json={"users": [{"user_ref": "u_1", "kind": "person"},
@@ -96,7 +96,7 @@ async def test_seat_utilization_and_waste(client, conn, tenant) -> None:
 async def test_live_usage_classification(client, conn, tenant) -> None:
     from datetime import UTC, datetime, timedelta
 
-    from truefigure_sdk.domain.policies import pipeline
+    from truefigure_server.domain.policies import pipeline
     key = tenant["key"]
     dep, *_ = await _dep(client, key)
     await client.post("/v1/roster:batch", json={"users": [{"user_ref": "u_1", "kind": "person"}]},
@@ -120,7 +120,7 @@ async def test_live_usage_classification(client, conn, tenant) -> None:
 
 # ---- live/cost --------------------------------------------------------------
 async def test_live_cost_priced_and_unpriced(client, conn, tenant) -> None:
-    from truefigure_sdk.domain.policies import pipeline
+    from truefigure_server.domain.policies import pipeline
     key = tenant["key"]
     dep, *_ = await _dep(client, key)
     await _post(client, key, [_meter(dep, "tokens_out", 1000, D1), _meter(dep, "seats_active", 40, D1)])
@@ -138,7 +138,7 @@ async def test_live_cost_priced_and_unpriced(client, conn, tenant) -> None:
 
 # ---- containment (agent) with grade ----------------------------------------
 async def test_containment_agent(client, conn, tenant) -> None:
-    from truefigure_sdk.domain.policies import pipeline
+    from truefigure_server.domain.policies import pipeline
     key = tenant["key"]
     dep, *_ = await _dep(client, key, dtype="agent")
     acts = [
@@ -159,7 +159,7 @@ async def test_containment_agent(client, conn, tenant) -> None:
 
 # ---- report issuance binds exact figure versions ---------------------------
 async def test_report_issuance_and_get(client, conn, tenant) -> None:
-    from truefigure_sdk.domain.policies import pipeline
+    from truefigure_server.domain.policies import pipeline
     key = tenant["key"]
     dep, *_ = await _dep(client, key)
     await _post(client, key, [_meter(dep, "tokens_out", 100, D1)])
@@ -182,7 +182,7 @@ async def test_report_issuance_and_get(client, conn, tenant) -> None:
 
 # ---- lineage ----------------------------------------------------------------
 async def test_lineage_references(client, conn, tenant) -> None:
-    from truefigure_sdk.domain.policies import pipeline
+    from truefigure_server.domain.policies import pipeline
     key = tenant["key"]
     dep, *_ = await _dep(client, key)
     await _post(client, key, [_meter(dep, "tokens_out", 500, D1)])
@@ -200,7 +200,7 @@ async def test_lineage_references(client, conn, tenant) -> None:
 
 # ---- live/health ------------------------------------------------------------
 async def test_live_health_rates(client, conn, tenant) -> None:
-    from truefigure_sdk.domain.policies import pipeline
+    from truefigure_server.domain.policies import pipeline
     key = tenant["key"]
     dep, *_ = await _dep(client, key)
     await client.post("/v1/roster:batch", json={"users": [{"user_ref": "u_1", "kind": "person"}]},
@@ -218,7 +218,7 @@ async def test_live_health_rates(client, conn, tenant) -> None:
 
 # ---- alerts + ack -----------------------------------------------------------
 async def test_alerts_monitor_and_ack(client, conn, tenant) -> None:
-    from truefigure_sdk.domain.policies import pipeline
+    from truefigure_server.domain.policies import pipeline
     key = tenant["key"]
     dep, *_ = await _dep(client, key)
     # 10 activity events, none joinable (no work_item_id) -> join_rate_drop

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from truefigure_sdk.api.request_models import wire
+from truefigure_server.api.request_models import wire
 
 EXPECTED = [
     ("roster", "kind", "user_type"),

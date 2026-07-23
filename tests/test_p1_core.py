@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from truefigure_sdk.api.response_models import envelope
-from truefigure_sdk.platform.config import registry
-from truefigure_sdk.errors import TFError, error_object
+from truefigure_server.api.response_models import envelope
+from truefigure_server.platform.config import registry
+from truefigure_server.errors import TFError, error_object
 
 
 def test_registry_loads_all_codes() -> None:

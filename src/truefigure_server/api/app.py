@@ -13,11 +13,11 @@ from typing import Any
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from truefigure_sdk.api.application_services.auth import Principal, require_principal
-from truefigure_sdk.api.response_models import envelope
-from truefigure_sdk.errors import TFError
-from truefigure_sdk.platform.config.config import get_settings
-from truefigure_sdk.platform.database import db
+from truefigure_server.api.application_services.auth import Principal, require_principal
+from truefigure_server.api.response_models import envelope
+from truefigure_server.errors import TFError
+from truefigure_server.platform.config.config import get_settings
+from truefigure_server.platform.database import db
 
 
 @asynccontextmanager
@@ -29,7 +29,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:  # pragma: no cover - 
 app = FastAPI(title="TrueFigure SDK", version="1.0", lifespan=lifespan)
 
 # routers imported after app is created (they import `app`-adjacent helpers)
-from truefigure_sdk.api.routes import (  # noqa: E402
+from truefigure_server.api.routes import (  # noqa: E402
     config_plane,
     imports,
     ingest,

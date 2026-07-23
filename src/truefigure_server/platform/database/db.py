@@ -15,7 +15,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from truefigure_sdk.platform.config.config import get_settings
+from truefigure_server.platform.config.config import get_settings
 
 DictConn: TypeAlias = psycopg.Connection[dict[str, Any]]
 

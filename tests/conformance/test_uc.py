@@ -11,10 +11,10 @@ import json
 
 from _helpers import activity, auth, cost_meter, lifecycle, make_deployment, post_events, provision, revenue, secret_from
 
-from truefigure_sdk.domain import engine
-from truefigure_sdk.api.routes import imports
-from truefigure_sdk.domain.policies import pipeline
-from truefigure_sdk.platform.storage import storage
+from truefigure_server.domain import engine
+from truefigure_server.api.routes import imports
+from truefigure_server.domain.policies import pipeline
+from truefigure_server.platform.storage import storage
 
 P = "2026-07"
 T1 = "2026-07-01T10:00:00Z"
@@ -478,8 +478,8 @@ async def test_uc_eco_03(client, ops, conn) -> None:
     out = ops("key", "issue", "--workspace-ref", "ws_prod", "--owner-user-ref", "u_admin",
               "--mode", "production", "--scope", "deployment", "--deployment-ref", granted)
     scoped = secret_from(out)
-    from truefigure_sdk.api.application_services.auth import resolve_key
-    from truefigure_sdk.errors import TFError
+    from truefigure_server.api.application_services.auth import resolve_key
+    from truefigure_server.errors import TFError
     p = resolve_key(scoped)
     oid = conn.execute("SELECT id FROM deployments WHERE deployment_ref=%s", (other,)).fetchone()["id"]
     try:

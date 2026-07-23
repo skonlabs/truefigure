@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "truefigure-sdk-server"
+name = "truefigure-server"
 version = "0.1.0"
 description = "TrueFigure SDK server implementation"
 requires-python = ">=3.11"
@@ -11,21 +11,21 @@ requires-python = ">=3.11"
 [tool.setuptools]
 package-dir = { "" = "src" }
 packages = [
-    "truefigure_sdk",
-    "truefigure_sdk.api",
-    "truefigure_sdk.api.routes",
-    "truefigure_sdk.api.request_models",
-    "truefigure_sdk.api.response_models",
-    "truefigure_sdk.api.application_services",
-    "truefigure_sdk.domain",
-    "truefigure_sdk.domain.entities",
-    "truefigure_sdk.domain.policies",
-    "truefigure_sdk.platform",
-    "truefigure_sdk.platform.database",
-    "truefigure_sdk.platform.storage",
-    "truefigure_sdk.platform.billing",
-    "truefigure_sdk.platform.config",
-    "truefigure_sdk.platform.security",
+    "truefigure_server",
+    "truefigure_server.api",
+    "truefigure_server.api.routes",
+    "truefigure_server.api.request_models",
+    "truefigure_server.api.response_models",
+    "truefigure_server.api.application_services",
+    "truefigure_server.domain",
+    "truefigure_server.domain.entities",
+    "truefigure_server.domain.policies",
+    "truefigure_server.platform",
+    "truefigure_server.platform.database",
+    "truefigure_server.platform.storage",
+    "truefigure_server.platform.billing",
+    "truefigure_server.platform.config",
+    "truefigure_server.platform.security",
 ]
 
 [tool.pytest.ini_options]

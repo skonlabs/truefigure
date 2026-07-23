@@ -23,9 +23,9 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from truefigure_sdk.errors import TFError
-from truefigure_sdk.platform.database import db
-from truefigure_sdk.platform.security import secretbox
+from truefigure_server.errors import TFError
+from truefigure_server.platform.database import db
+from truefigure_server.platform.security import secretbox
 
 SYSTEM_USER_ID = 1
 

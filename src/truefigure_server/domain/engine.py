@@ -19,10 +19,10 @@ from typing import Any
 
 import psycopg
 
-from truefigure_sdk.domain.entities import periods, refs
-from truefigure_sdk.domain.policies import webhooks_delivery
-from truefigure_sdk.platform.database import db
-from truefigure_sdk.platform.storage import storage
+from truefigure_server.domain.entities import periods, refs
+from truefigure_server.domain.policies import webhooks_delivery
+from truefigure_server.platform.database import db
+from truefigure_server.platform.storage import storage
 
 SYSTEM_USER_ID = 1
 METHOD_VERSION = "1.0.0"

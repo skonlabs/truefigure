@@ -34,7 +34,7 @@ retention jobs (rejected_events ~90d, webhook_deliveries 7d refetch window) are
 app-managed - the schema deliberately does not encode them.
 
 ## Client verification
-    cd python && pip install -e . && python -m pytest tests/   # 19 passed
+    cd sdk && pip install -e . && python -m pytest tests/   # 19 passed
 
 ## Wire-contract verification (any language)
 Validate emitter output against schemas/events.schema.json with a Draft 2020-12

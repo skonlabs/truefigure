@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from truefigure_sdk.errors import TFError
-from truefigure_sdk.platform.database import db
+from truefigure_server.errors import TFError
+from truefigure_server.platform.database import db
 
 # Per-plan monthly event quota (defaults; [A] tunable per workspace in production).
 PLAN_QUOTA = {

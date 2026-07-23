@@ -10,10 +10,10 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 
-from truefigure_sdk.api.application_services.auth import Principal, require_principal
-from truefigure_sdk.api.request_models.http import ok
-from truefigure_sdk.errors import TFError
-from truefigure_sdk.platform.database import db
+from truefigure_server.api.application_services.auth import Principal, require_principal
+from truefigure_server.api.request_models.http import ok
+from truefigure_server.errors import TFError
+from truefigure_server.platform.database import db
 
 router = APIRouter()
 

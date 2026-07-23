@@ -23,11 +23,11 @@ import psycopg
 from fastapi import APIRouter, Depends, Request
 from jsonschema import Draft202012Validator
 
-from truefigure_sdk.api.application_services.auth import Principal, require_principal
-from truefigure_sdk.api.request_models.http import ok
-from truefigure_sdk.domain.entities import eventkey
-from truefigure_sdk.errors import TFError
-from truefigure_sdk.platform.database import db
+from truefigure_server.api.application_services.auth import Principal, require_principal
+from truefigure_server.api.request_models.http import ok
+from truefigure_server.domain.entities import eventkey
+from truefigure_server.errors import TFError
+from truefigure_server.platform.database import db
 
 router = APIRouter()
 SYSTEM_USER_ID = 1
@@ -146,7 +146,7 @@ async def ingest_events(request: Request, principal: Principal = Depends(require
         raise TFError("TF-EVT-007", detail=f"batch exceeds {_MAX_BATCH} events")
 
     # Per-tenant rate limit + plan quota (batch-level, 429).
-    from truefigure_sdk.platform.billing import ratelimit
+    from truefigure_server.platform.billing import ratelimit
     ws = db.fetch_one("SELECT rate_limit_rpm FROM workspaces WHERE id=%s", (principal.workspace_id,))
     ratelimit.check_rate(principal.workspace_id, int(ws["rate_limit_rpm"]) if ws else 600)
     ratelimit.check_quota(principal.workspace_id)

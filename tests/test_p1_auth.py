@@ -53,7 +53,7 @@ async def test_ops_issues_key_secret_shown_once(acme, ops, conn) -> None:
     secret = _issue_key(ops)
     assert secret.startswith("tf_live_") and len(secret) == len("tf_live_") + 32
     # Only the hash is stored, never the plaintext.
-    from truefigure_sdk.api.application_services.auth import hash_key
+    from truefigure_server.api.application_services.auth import hash_key
 
     stored = conn.execute("SELECT secret_hash FROM api_keys ORDER BY id DESC LIMIT 1").fetchone()
     assert stored["secret_hash"] == hash_key(secret)
@@ -118,8 +118,8 @@ async def test_auth002_deployment_scope_enforced(acme, ops, client, conn) -> Non
     other = _make_deployment(conn, "ws_prod", "dep_other")
     secret = _issue_key(ops, scope="deployment", deployments=["dep_granted"])
 
-    from truefigure_sdk.api.application_services.auth import resolve_key
-    from truefigure_sdk.errors import TFError
+    from truefigure_server.api.application_services.auth import resolve_key
+    from truefigure_server.errors import TFError
 
     principal = resolve_key(secret)
     assert principal.scope == "deployment"
@@ -131,8 +131,8 @@ async def test_auth002_deployment_scope_enforced(acme, ops, client, conn) -> Non
 
 async def test_require_role_rejects_missing(acme, ops) -> None:
     secret = _issue_key(ops)  # no roles
-    from truefigure_sdk.api.application_services.auth import resolve_key
-    from truefigure_sdk.errors import TFError
+    from truefigure_server.api.application_services.auth import resolve_key
+    from truefigure_server.errors import TFError
 
     principal = resolve_key(secret)
     with pytest.raises(TFError) as exc:

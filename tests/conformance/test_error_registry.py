@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from _helpers import activity, auth, make_deployment, post_events, provision, secret_from
 
-from truefigure_sdk.api.routes import imports
-from truefigure_sdk.platform.config import registry
-from truefigure_sdk.domain.policies import webhooks_delivery
-from truefigure_sdk.errors import TFError
+from truefigure_server.api.routes import imports
+from truefigure_server.platform.config import registry
+from truefigure_server.domain.policies import webhooks_delivery
+from truefigure_server.errors import TFError
 
 SEEN: set[str] = set()
 T1 = "2026-07-01T10:00:00Z"
@@ -40,7 +40,7 @@ async def test_err_auth(client, ops, conn) -> None:
     o = await make_deployment(client, key, name="o")
     scoped = secret_from(ops("key", "issue", "--workspace-ref", "ws_prod", "--owner-user-ref", "u_admin",
                              "--mode", "production", "--scope", "deployment", "--deployment-ref", g))
-    from truefigure_sdk.api.application_services.auth import resolve_key
+    from truefigure_server.api.application_services.auth import resolve_key
     oid = conn.execute("SELECT id FROM deployments WHERE deployment_ref=%s", (o,)).fetchone()["id"]
     try:
         resolve_key(scoped).require_deployment(int(oid))
@@ -132,7 +132,7 @@ async def test_err_read_srv(client, ops, conn) -> None:
     # READ-003: a below-k cohort on live/usage
     await client.post("/v1/roster:batch", json={"users": [{"user_ref": "u1", "kind": "person"}]}, headers=auth(key))
     await post_events(client, key, [activity(dep, "u1", "W", T1)])
-    from truefigure_sdk.domain.policies import pipeline
+    from truefigure_server.domain.policies import pipeline
     pipeline.run_pipeline()
     await client.put(f"/v1/deployments/{dep}/license", json={"seats_paid": 3, "valid_from": "2026-01-01"},
                      headers=auth(key))

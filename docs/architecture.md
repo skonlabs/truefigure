@@ -4,14 +4,14 @@ Logic is separated by responsibility so proprietary/core rules stay server-side
 and consistent, while the SDK carries only client-side convenience.
 
 ```
-python/truefigure/            SDK  — client-side convenience only
+sdk/truefigure/            SDK  — client-side convenience only
 ├── client.py                 file upload, pagination, retries, polling, timeouts, transport
 ├── events.py                 request construction only (no validation, no key, no canonicalization)
 ├── webhooks.py               webhook signature verification (consumer-side HMAC)
 ├── types.py                  language-specific typed results
 └── errors.py                 error mapping (closed TF-<PLANE>-<NNN> registry)
 
-src/truefigure_sdk/           SERVER
+src/truefigure_server/           SERVER
 ├── api/                      Application layer — authentication, orchestration, (de)serialization
 │   ├── app.py                composition root (mounts routers, request-id, error envelopes)
 │   ├── routes/               URL routers + controllers (config, ingest, read, imports, webhooks)
@@ -35,14 +35,14 @@ src/truefigure_sdk/           SERVER
 
 | Concern | Layer | Module(s) |
 |---|---|---|
-| File handling, retries, polling, typed results, workflows (NO validation/keying — pure passthrough) | **SDK** | `python/truefigure/*` |
+| File handling, retries, polling, typed results, workflows (NO validation/keying — pure passthrough) | **SDK** | `sdk/truefigure/*` |
 | Authentication, authorization, request orchestration, async-job mgmt, result aggregation | **API application** | `api/routes`, `api/application_services`, `api/request_models`, `api/response_models` |
 | Engines, policy evaluation, confidence/margin, result ranking | **Core intelligence** | `domain/engine.py`, `domain/policies`, `domain/entities` |
 | Storage, database, queues (workers), billing, observability, external providers | **Platform** | `platform/*` |
 
 ## Enforced invariants (checked by `ci.sh`)
 
-- **The SDK holds no measurement/core logic** — `grep` guard over `python/truefigure`
+- **The SDK holds no measurement/core logic** — `grep` guard over `sdk/truefigure`
   finds no engine/pricing/threshold code.
 - **Clean layering** — `domain/` and `platform/` never import `api/`, so the core
   intelligence layer is independent of transport and controllers.

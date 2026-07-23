@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from conftest import auth
-from truefigure_sdk.domain.policies import webhooks_delivery as wd
+from truefigure_server.domain.policies import webhooks_delivery as wd
 
 
 class FakeSender:

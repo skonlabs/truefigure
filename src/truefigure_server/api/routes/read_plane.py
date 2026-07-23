@@ -13,11 +13,11 @@ from typing import Any
 import psycopg
 from fastapi import APIRouter, Depends, Request
 
-from truefigure_sdk.api.application_services.auth import Principal, require_principal
-from truefigure_sdk.api.request_models.http import ok
-from truefigure_sdk.errors import TFError
-from truefigure_sdk.platform.database import db
-from truefigure_sdk.platform.storage import storage
+from truefigure_server.api.application_services.auth import Principal, require_principal
+from truefigure_server.api.request_models.http import ok
+from truefigure_server.errors import TFError
+from truefigure_server.platform.database import db
+from truefigure_server.platform.storage import storage
 
 router = APIRouter()
 SYSTEM_USER_ID = 1
@@ -207,7 +207,7 @@ async def live_usage(deployment_id: str, request: Request, principal: Principal 
 @router.get("/v1/live/cost/{deployment_id}")
 async def live_cost(deployment_id: str, request: Request, principal: Principal = Depends(require_principal)) -> Any:
     period = request.query_params.get("period") or datetime.now(UTC).strftime("%Y-%m")
-    from truefigure_sdk.domain.entities import periods
+    from truefigure_server.domain.entities import periods
 
     start, end = periods.period_bounds(period)
     with db.transaction() as cur:

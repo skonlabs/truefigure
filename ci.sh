@@ -99,21 +99,21 @@ if [ -d src ] && [ -n "$(find src -name "*.py" 2>/dev/null)" ]; then python3 -m 
 # and separately forbids crypto in the event/transport modules.)
 say "no proprietary logic in the downloadable SDK"
 if grep -RInE 'natural_key|_event_key|canonical_ts|def _iso|_write_figure|compute_deployment|def _change_treatment|labor_rate|price_provenance' \
-     python/truefigure 2>/dev/null \
-   || grep -nE 'hashlib|sha256|hmac' python/truefigure/events.py python/truefigure/client.py 2>/dev/null; then
+     sdk/truefigure 2>/dev/null \
+   || grep -nE 'hashlib|sha256|hmac' sdk/truefigure/events.py sdk/truefigure/client.py 2>/dev/null; then
   red "proprietary/core logic leaked into the SDK (see matches above)"
 else grn "SDK is pure passthrough; no proprietary logic ships to customers"; fi
 
 # Enforce the api/domain/platform layering: the domain (core) must not import the
 # api layer, keeping the intelligence layer independent of transport/controllers.
 say "layering: domain must not depend on api"
-if grep -RInE 'from truefigure_sdk\.api|import truefigure_sdk\.api' src/truefigure_sdk/domain src/truefigure_sdk/platform 2>/dev/null; then
+if grep -RInE 'from truefigure_server\.api|import truefigure_server\.api' src/truefigure_server/domain src/truefigure_server/platform 2>/dev/null; then
   red "layering violation: domain/platform imports the api layer"
 else grn "domain/platform independent of api (clean layering)"; fi
 
 say "python SDK tests + coverage == 100%"
-if python3 -m pytest --version >/dev/null 2>&1 && [ -d python/tests ]; then
-  ( cd python && python3 -m pytest -q tests/ --cov=truefigure --cov-report=term-missing --cov-fail-under=100 ) \
+if python3 -m pytest --version >/dev/null 2>&1 && [ -d sdk/tests ]; then
+  ( cd sdk && python3 -m pytest -q tests/ --cov=truefigure --cov-report=term-missing --cov-fail-under=100 ) \
     && grn "python SDK tests green (100% coverage)" || red "python SDK tests/coverage failed"
 else pend "P0" "pytest/client not available"; fi
 
