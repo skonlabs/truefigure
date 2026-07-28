@@ -71,5 +71,5 @@ except WebhookVerificationError:
 ## Test
 
 ```sh
-cd python && python -m pytest tests/ -q
+cd sdk && python -m pytest tests/ -q
 ```
